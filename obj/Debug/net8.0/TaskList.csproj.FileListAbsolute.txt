@@ -18,11 +18,6 @@ C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\TaskList.MvcApplication
 C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\TaskList.MvcApplicationPartsAssemblyInfo.cache
 C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\staticwebassets.build.json
 C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\staticwebassets.development.json
-C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\staticwebassets\msbuild.TaskList.Microsoft.AspNetCore.StaticWebAssets.props
-C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\staticwebassets\msbuild.build.TaskList.props
-C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.TaskList.props
-C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.TaskList.props
-C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\staticwebassets.pack.json
 C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\scopedcss\bundle\TaskList.styles.css
 C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\TaskList.csproj.Up2Date
 C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\TaskList.dll
@@ -30,3 +25,12 @@ C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\refint\TaskList.dll
 C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\TaskList.pdb
 C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\TaskList.genruntimeconfig.cache
 C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\ref\TaskList.dll
+C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\TaskList.sourcelink.json
+C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\rpswa.dswa.cache.json
+C:\Users\mayck\Documents\Codes\TaskList\bin\Debug\net8.0\TaskList.staticwebassets.endpoints.json
+C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\rjimswa.dswa.cache.json
+C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
+C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json
+C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\staticwebassets.build.json.cache
+C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\staticwebassets.build.endpoints.json
+C:\Users\mayck\Documents\Codes\TaskList\obj\Debug\net8.0\swae.build.ex.cache
