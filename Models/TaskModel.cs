@@ -6,28 +6,27 @@ public class TaskModel
 {
     public TaskModel(string name, string description)
     {
-        this.ID = 0;
-        this.Name = name;
+        this.Id = 0;
+        this.Title = name;
         this.Description = description;
         this.Done = false;
         this.DateCreation = DateTime.Now;
         this.DateEdition = DateTime.Now;
-
     }
 
-    public int ID { get; set; }
-    public string? Name { get; set; }
+    public int Id { get; set; }
+    public string? Title { get; set; }
     public string? Description { get; set; }
     public bool Done { get; set; }
     public DateTime DateCreation { get; set; }
     public DateTime DateEdition { get; set; }
 
-    // Edit the task name to a new name if have value
-    public bool EditName(string newName)
+    // Edit the task Title to a new Title if have value
+    public bool EditTitle(string newTitle)
     {
-        if (newName != "")
+        if (newTitle != "")
         {
-            this.Name = newName;
+            this.Title = newTitle;
             this.DateEdition = DateTime.Now;
             return true;
         }
@@ -66,10 +65,10 @@ public class TaskModel
     // Return task data
     public TaskModel GetTask()
     {
-        return new TaskModel(this.Name!, this.Description!)
+        return new TaskModel(this.Title!, this.Description!)
         {
-            ID = this.ID,
-            Name = this.Name,
+            Id = this.Id,
+            Title = this.Title,
             Description = this.Description,
             Done = this.Done,
             DateCreation = this.DateCreation,
