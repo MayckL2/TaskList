@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using TaskList.Entities;
+using TaskList.Entity;
 
 namespace TaskList.Contexts;
 
@@ -13,12 +13,12 @@ public class TaskContext : DbContext
     {
     }
 
-    public DbSet<TaskEntitie> Tasks { get; set; }
+    public DbSet<TaskEntity> Tasks { get; set; }
 
 // specify the id as the primary key in the entity
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<TaskEntitie>()
+        modelBuilder.Entity<TaskEntity>()
             .HasKey(t => t.Id);
     }
 }

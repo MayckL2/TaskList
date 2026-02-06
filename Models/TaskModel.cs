@@ -1,19 +1,21 @@
 using Microsoft.Extensions.WebEncoders.Testing;
+using TaskList.Entity;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TaskList.Models;
 
-public class TaskModel
+public class TaskModel : TaskEntity
 {
     public TaskModel(string name, string description)
     {
-        this.Id = 0;
         this.Title = name;
         this.Description = description;
         this.Done = false;
-        this.DateCreation = DateTime.Now;
-        this.DateEdition = DateTime.Now;
     }
 
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
     public string? Title { get; set; }
     public string? Description { get; set; }
