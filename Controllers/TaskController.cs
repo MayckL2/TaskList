@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using TaskList.Contexts;
-using TaskList.Entities;
+using TaskList.Entity;
 using TaskList.Models;
+using TaskList.DTOs;
 
 namespace TaskList.Controllers;
 
@@ -19,13 +20,19 @@ public class TaskController : ControllerBase
 
 // Create a new task with name and description
     [HttpPost("CreateTask")]
-    public IActionResult CreateTask(TaskEntitie Task)
+    public IActionResult CreateTask(CreateTaskDTO Task)
     {
-        Task.DateCreation = DateTime.Now;
-        Task.DateEdition = DateTime.Now;
-        _context.Tasks.Add(Task);
+        TaskModel repository = new (
+            Task.Title,
+            Task.Description
+        );
+        _context.Tasks.Add(repository);
         _context.SaveChanges();
-        return CreatedAtAction(nameof(CreateTask), new { id = Task.Id }, Task);
+
+// Test with repository id returning 0
+        Console.WriteLine($"ID antes de Add: {repository.Id}");
+        
+        return CreatedAtAction(nameof(CreateTask), new { id = repository.Id }, repository);
     }
 
 // List all tasks
@@ -49,7 +56,7 @@ public class TaskController : ControllerBase
 
 // Update a task by id
     [HttpPut("UpdateTask/{id}")]
-    public IActionResult UpdateTask(int id, TaskEntitie updatedTask)
+    public IActionResult UpdateTask(int id, TaskDTO updatedTask)
     {
         var existingTask = _context.Tasks.Find(id);
         if (existingTask == null)
