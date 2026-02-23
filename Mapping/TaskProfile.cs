@@ -1,6 +1,6 @@
 using AutoMapper;
-using TaskList.Entity;
 using TaskList.DTOs;
+using TaskList.Models;
 
 namespace TaskList.Mapping;
 
@@ -8,7 +8,7 @@ public class TaskProfile : Profile
 {
     public TaskProfile()
     {
-        CreateMap<TaskEntity, TaskDTO>();
+        CreateMap<TaskModel, ShowTaskDTO>();
+        CreateMap<ShowTaskDTO, TaskModel>();
     }
-    
 }

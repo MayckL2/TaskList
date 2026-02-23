@@ -3,22 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using TaskList.Entity;
+using TaskList.Models;
 
 namespace TaskList.Contexts;
 
 public class TaskContext : DbContext
 {
-    public TaskContext(DbContextOptions<TaskContext> options) : base(options)
-    {
-    }
+    public TaskContext(DbContextOptions<TaskContext> options)
+        : base(options) { }
 
-    public DbSet<TaskEntity> Tasks { get; set; }
+    public DbSet<TaskModel> Tasks { get; set; }
 
-// specify the id as the primary key in the entity
+    // specify the id as the primary key in the Model
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<TaskEntity>()
-            .HasKey(t => t.Id);
+        modelBuilder.Entity<TaskModel>().HasKey(t => t.Id);
     }
 }

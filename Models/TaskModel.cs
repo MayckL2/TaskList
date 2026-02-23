@@ -1,17 +1,14 @@
-using Microsoft.Extensions.WebEncoders.Testing;
-using TaskList.Entity;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TaskList.Models;
 
-public class TaskModel : TaskEntity
+public class TaskModel
 {
-    public TaskModel(string name, string description)
+    public TaskModel(string title, string description)
     {
-        this.Title = name;
+        this.Title = title;
         this.Description = description;
-        this.Done = false;
     }
 
     [Key]
@@ -19,9 +16,9 @@ public class TaskModel : TaskEntity
     public int Id { get; set; }
     public string? Title { get; set; }
     public string? Description { get; set; }
-    public bool Done { get; set; }
-    public DateTime DateCreation { get; set; }
-    public DateTime DateEdition { get; set; }
+    public bool Done { get; set; } = false;
+    public DateTime DateCreation { get; set; } = DateTime.Now;
+    public DateTime DateEdition { get; set; } = DateTime.Now;
 
     // Edit the task Title to a new Title if have value
     public bool EditTitle(string newTitle)
@@ -74,8 +71,7 @@ public class TaskModel : TaskEntity
             Description = this.Description,
             Done = this.Done,
             DateCreation = this.DateCreation,
-            DateEdition = this.DateEdition
+            DateEdition = this.DateEdition,
         };
     }
-
 }
