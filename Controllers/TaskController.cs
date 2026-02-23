@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using TaskList.Contexts;
-using TaskList.Entity;
-using TaskList.Models;
 using TaskList.DTOs;
+using TaskList.IServices;
+using TaskList.Repositories;
 
 namespace TaskList.Controllers;
 
@@ -10,79 +10,63 @@ namespace TaskList.Controllers;
 [Route("api/[controller]")]
 public class TaskController : ControllerBase
 {
-
     private readonly TaskContext _context;
+    private readonly ITaskService _taskService;
 
-    public TaskController(TaskContext context)
+    public TaskController(ITaskService taskService, TaskContext context)
     {
+        _taskService = taskService;
         _context = context;
     }
 
-// Create a new task with name and description
+    // Create a new task with name and description
     [HttpPost("CreateTask")]
-    public IActionResult CreateTask(CreateTaskDTO Task)
+    public async Task<IActionResult> CreateTask(CreateTaskDTO Task)
     {
-        TaskModel repository = new (
-            Task.Title,
-            Task.Description
-        );
-        _context.Tasks.Add(repository);
-        _context.SaveChanges();
-
-// Test with repository id returning 0
-        Console.WriteLine($"ID antes de Add: {repository.Id}");
-        
-        return CreatedAtAction(nameof(CreateTask), new { id = repository.Id }, repository);
+        var result = await _taskService.CreateAsync(Task);
+        Console.WriteLine($"Test: {result}");
+        return Ok(result);
     }
 
-// List all tasks
+    // List all tasks
     [HttpGet("ListTasks")]
-    public IActionResult ListTasks()
+    public async Task<IActionResult> ListTasks()
     {
-        return Ok(_context.Tasks.ToList());
+        return Ok(await _taskService.GetAllAsync());
     }
 
-// Consult a task by id
+    // // Consult a task by id
     [HttpGet("ConsultTask/{id}")]
-    public IActionResult ConsultTask(int id)
+    public async Task<IActionResult> ConsultTask(int id)
     {
-        var task = _context.Tasks.Find(id);
-        if (task == null)
+        var result = await _taskService.GetByIdAsync(id);
+        if (result != null)
         {
-            return NotFound();
+            return Ok(result);
         }
-        return Ok(task);
+        return NotFound();
     }
 
-// Update a task by id
+    // // Update a task by id
     [HttpPut("UpdateTask/{id}")]
-    public IActionResult UpdateTask(int id, TaskDTO updatedTask)
+    public async Task<IActionResult> UpdateTask(int id, UpdateTaskDTO updatedTask)
     {
-        var existingTask = _context.Tasks.Find(id);
-        if (existingTask == null)
-        {
-            return NotFound();
-        }
-
-        existingTask.Title = updatedTask.Title;
-        existingTask.Description = updatedTask.Description;
-        existingTask.DateEdition = DateTime.Now;
-
-        _context.SaveChanges();
-        return Ok(existingTask);
+        var update = await _taskService.UpdateAsync(id, updatedTask);
+        return Ok(update);
     }
 
-// Delete a task by id
+    // // Delete a task by id
     [HttpDelete("DeleteTask/{id}")]
-    public IActionResult DeleteTask(int id)
+    public async Task<IActionResult> DeleteTask(int id)
     {
-        var task = _context.Tasks.Find(id);
-        if (task == null)
+        var delete = await _taskService.DeleteAsync(id);
+        if (delete)
         {
-            return NotFound();
+            return Ok($"Task {id} deleted sucefully!");
         }
-        _context.Tasks.Remove(task);
-        _context.SaveChanges();
-        return NoContent();
+        else
+        {
+            return NotFound("Task not found");
+        }
     }
 }
