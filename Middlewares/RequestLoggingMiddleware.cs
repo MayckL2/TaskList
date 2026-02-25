@@ -34,7 +34,9 @@ public class RequestLoggingMiddleware
             );
 
             // Adicionar cabeçalho de aviso
-            context.Response.Headers.Add("X-Devagar", "Essa requisição demorou mais que 1s");
+            // VERIFICAR!!!
+            // Metodo travando o retorno da api se demorar mais de 1 segundo
+            // context.Response.Headers.Append("X-Devagar", "Essa requisição demorou mais que 1s");
         }
     }
 }
