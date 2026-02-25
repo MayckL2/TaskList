@@ -10,5 +10,6 @@ namespace TaskList.IServices
         Task<ShowTaskDTO?> GetByIdAsync(int id);
         Task<ShowTaskDTO> UpdateAsync(int id, UpdateTaskDTO task);
         Task<bool> DeleteAsync(int id);
+        Task<ShowTaskDTO?> CompleteTaskAsync(int id, bool done);
     }
 }

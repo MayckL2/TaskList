@@ -68,4 +68,16 @@ public class TaskController : ControllerBase
             return NotFound("Task not found");
         }
     }
+
+    // Update task status done
+    [HttpPatch("CompleteTask/{id}/{done}")]
+    public async Task<IActionResult> CompleteTask(int id, bool done)
+    {
+        var result = await _taskService.CompleteTaskAsync(id, done);
+        if (result == null)
+        {
+            return BadRequest("Task not found...");
+        }
+        return Ok(result);
+    }
 }

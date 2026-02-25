@@ -15,6 +15,7 @@ public class TaskService : ITaskService
         _repository = repository;
     }
 
+    // Verify if all data required is fulled and do the creation
     public async Task<ShowTaskDTO> CreateAsync(CreateTaskDTO Task)
     {
         if (string.IsNullOrWhiteSpace(Task.Title))
@@ -29,23 +30,25 @@ public class TaskService : ITaskService
         return await _repository.CreateAsync(Task);
     }
 
+    // Get all task and return a list
     public async Task<List<ShowTaskDTO>> GetAllAsync()
     {
         return await _repository.GetAllAsync().ToListAsync();
     }
 
+    // Try to find task by id, return the task or null
     public async Task<ShowTaskDTO?> GetByIdAsync(int id)
     {
-        var query = await _repository.GetByIdAsync(id);
-        return query;
+        return await _repository.GetByIdAsync(id);
     }
 
+    // Update task
     public async Task<ShowTaskDTO> UpdateAsync(int id, UpdateTaskDTO task)
     {
-        var query = await _repository.UpdateAsync(id, task);
-        return query;
+        return await _repository.UpdateAsync(id, task);
     }
 
+    // Delete task if id exists and return bool
     public async Task<bool> DeleteAsync(int id)
     {
         var taskExist = await _repository.GetByIdAsync(id);
@@ -59,5 +62,15 @@ public class TaskService : ITaskService
             return true;
         }
         return false;
+    }
+
+    // Update task status done or return null if id was not find
+    public async Task<ShowTaskDTO?> CompleteTaskAsync(int id, bool done)
+    {
+        var task = await _repository.GetByIdAsync(id);
+        if (task == null)
+            return null;
+
+        return await _repository.CompleteTaskAsync(task, done);
     }
 }

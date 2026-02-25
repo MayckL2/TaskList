@@ -1,4 +1,5 @@
 using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
 using TaskList.Contexts;
 using TaskList.DTOs;
@@ -17,23 +18,20 @@ public class TaskRepository : ITaskRepository
         _mapper = mapper;
     }
 
-    // Search by Id
+    // Search by Id and return the task or null
     public async Task<ShowTaskDTO?> GetByIdAsync(int id)
     {
         var query = await _context.Tasks.FirstOrDefaultAsync(c => c.Id == id);
         return _mapper.Map<ShowTaskDTO>(query);
     }
 
+    // Return all task
     public IQueryable<ShowTaskDTO> GetAllAsync()
     {
-        return _context.Tasks.Select(t => new ShowTaskDTO
-        {
-            Id = t.Id,
-            Title = t.Title,
-            Description = t.Description,
-        });
+        return _context.Tasks.ProjectTo<ShowTaskDTO>(_mapper.ConfigurationProvider);
     }
 
+    // Register task on database and return criation
     public async Task<ShowTaskDTO> CreateAsync(CreateTaskDTO Task)
     {
         TaskModel task = new(Task.Title, Task.Description);
@@ -48,6 +46,7 @@ public class TaskRepository : ITaskRepository
         return _mapper.Map<ShowTaskDTO>(task);
     }
 
+    // Update task on database and return the modification
     public async Task<ShowTaskDTO> UpdateAsync(int id, UpdateTaskDTO task)
     {
         var existingTask = _context.Tasks.Find(id);
@@ -69,6 +68,7 @@ public class TaskRepository : ITaskRepository
         return updatedTask;
     }
 
+    // Delete task from database
     public async Task<bool> DeleteAsync(int id)
     {
         var task = await _context.Tasks.FindAsync(id);
@@ -79,5 +79,14 @@ public class TaskRepository : ITaskRepository
         _context.Tasks.Remove(task);
         _context.SaveChanges();
         return true;
+    }
+
+    // Uptade status done of the task
+    public async Task<ShowTaskDTO?> CompleteTaskAsync(ShowTaskDTO task, bool done)
+    {
+        task.Done = done;
+        _context.SaveChanges();
+
+        return task;
     }
 }

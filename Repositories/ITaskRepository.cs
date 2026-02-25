@@ -17,7 +17,7 @@ public interface ITaskRepository
     Task<ShowTaskDTO> CreateAsync(CreateTaskDTO task);
     Task<ShowTaskDTO> UpdateAsync(int id, UpdateTaskDTO task);
     Task<bool> DeleteAsync(int id); // Soft ou hard delete
-    // Task SaveChangesAsync();
+    Task<ShowTaskDTO?> CompleteTaskAsync(ShowTaskDTO task, bool done);
 
     // // 📊 Pagination
     // Task<(IEnumerable<TaskModel> Itens, int Total)> GetPagedAsync(int page, int pageSize);
