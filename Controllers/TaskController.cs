@@ -24,7 +24,6 @@ public class TaskController : ControllerBase
     public async Task<IActionResult> CreateTask(CreateTaskDTO Task)
     {
         var result = await _taskService.CreateAsync(Task);
-        Console.WriteLine($"Test: {result}");
         return Ok(result);
     }
 
