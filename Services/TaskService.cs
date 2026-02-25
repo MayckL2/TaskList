@@ -1,29 +1,21 @@
 using System;
-using AutoMapper;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TaskList.Contexts;
 using TaskList.DTOs;
 using TaskList.IServices;
-using TaskList.Models;
 using TaskList.Repositories;
 
 namespace TaskList.Services;
 
 public class TaskService : ITaskService
 {
-    private readonly TaskContext _context;
-    private readonly IMapper _mapper;
     private readonly TaskRepository _repository;
 
-    public TaskService(TaskContext context, IMapper mapper, TaskRepository repository)
+    public TaskService(TaskRepository repository)
     {
-        _context = context;
-        _mapper = mapper;
         _repository = repository;
     }
 
-    public async Task<TaskModel> CreateAsync(CreateTaskDTO Task)
+    public async Task<ShowTaskDTO> CreateAsync(CreateTaskDTO Task)
     {
         if (string.IsNullOrWhiteSpace(Task.Title))
         {
@@ -34,45 +26,18 @@ public class TaskService : ITaskService
         {
             throw new ArgumentException("Description is necessary", nameof(Task.Description));
         }
-
-        TaskModel task = new(Task.Title, Task.Description);
-
-        _context.Tasks.Add(task);
-
-        int affectedRows = await _context.SaveChangesAsync();
-        if (affectedRows > 0)
-        {
-            Console.WriteLine($"Id da task: {task.Id}");
-        }
-        return task;
+        return await _repository.CreateAsync(Task);
     }
 
-    public async Task<IEnumerable<ShowTaskDTO>> GetAllAsync()
+    public async Task<List<ShowTaskDTO>> GetAllAsync()
     {
-        return await _context
-            .Tasks.Select(t => new ShowTaskDTO
-            {
-                Id = t.Id,
-                Title = t.Title,
-                Description = t.Description,
-            })
-            .ToListAsync();
+        return await _repository.GetAllAsync().ToListAsync();
     }
 
     public async Task<ShowTaskDTO?> GetByIdAsync(int id)
     {
         var query = await _repository.GetByIdAsync(id);
         return query;
-        // return await _context
-        //     .Tasks.Where(t => t.Id == id)
-        //     .Select(t => new ShowTaskDTO
-        //     {
-        //         Id = t.Id,
-        //         Title = t.Title,
-        //         Description = t.Description,
-        //         Done = t.Done,
-        //     })
-        //     .FirstOrDefaultAsync();
     }
 
     public async Task<ShowTaskDTO> UpdateAsync(int id, UpdateTaskDTO task)
@@ -84,7 +49,7 @@ public class TaskService : ITaskService
     public async Task<bool> DeleteAsync(int id)
     {
         var taskExist = await _repository.GetByIdAsync(id);
-        if (taskExist != null)
+        if (taskExist == null)
         {
             return false;
         }
