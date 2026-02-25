@@ -18,6 +18,6 @@ public class CreateTaskDTO
 
 public class UpdateTaskDTO
 {
-    public string? Title { get; set; }
-    public string? Description { get; set; }
+    public required string Title { get; set; }
+    public required string Description { get; set; }
 }
