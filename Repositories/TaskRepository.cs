@@ -24,6 +24,30 @@ public class TaskRepository : ITaskRepository
         return _mapper.Map<ShowTaskDTO>(query);
     }
 
+    public IQueryable<ShowTaskDTO> GetAllAsync()
+    {
+        return _context.Tasks.Select(t => new ShowTaskDTO
+        {
+            Id = t.Id,
+            Title = t.Title,
+            Description = t.Description,
+        });
+    }
+
+    public async Task<ShowTaskDTO> CreateAsync(CreateTaskDTO Task)
+    {
+        TaskModel task = new(Task.Title, Task.Description);
+
+        _context.Tasks.Add(task);
+
+        int affectedRows = await _context.SaveChangesAsync();
+        if (affectedRows > 0)
+        {
+            Console.WriteLine($"Id da task: {task.Id}");
+        }
+        return _mapper.Map<ShowTaskDTO>(task);
+    }
+
     public async Task<ShowTaskDTO> UpdateAsync(int id, UpdateTaskDTO task)
     {
         var existingTask = _context.Tasks.Find(id);
@@ -48,6 +72,10 @@ public class TaskRepository : ITaskRepository
     public async Task<bool> DeleteAsync(int id)
     {
         var task = await _context.Tasks.FindAsync(id);
+        if (task == null)
+        {
+            return false;
+        }
         _context.Tasks.Remove(task);
         _context.SaveChanges();
         return true;
