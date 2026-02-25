@@ -14,64 +14,30 @@ public class TaskModel
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
-    public string? Title { get; set; }
-    public string? Description { get; set; }
+
+    [Required(ErrorMessage = "Title is required!")]
+    [StringLength(
+        200,
+        MinimumLength = 3,
+        ErrorMessage = "The title should be between 3 and 200 characters."
+    )]
+    public string Title { get; set; }
+
+    [StringLength(1000, ErrorMessage = "The description must be a maximum of 1000 characters.")]
+    public string Description { get; set; }
+
+    [Required]
     public bool Done { get; set; } = false;
+
+    [Required]
+    [DataType(DataType.DateTime)]
+    [Display(Name = "Creation Date")]
+    [DisplayFormat(DataFormatString = "{0:dd/MM/yyyy HH:mm}")]
     public DateTime DateCreation { get; set; } = DateTime.Now;
+
+    [Required]
+    [DataType(DataType.DateTime)]
+    [Display(Name = "Edition Date")]
+    [DisplayFormat(DataFormatString = "{0:dd/MM/yyyy HH:mm}", ApplyFormatInEditMode = true)]
     public DateTime DateEdition { get; set; } = DateTime.Now;
-
-    // Edit the task Title to a new Title if have value
-    public bool EditTitle(string newTitle)
-    {
-        if (newTitle != "")
-        {
-            this.Title = newTitle;
-            this.DateEdition = DateTime.Now;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    // Edit the task description to a new description if have value
-    public bool EditDescription(string newDescription)
-    {
-        if (newDescription != "")
-        {
-            this.Description = newDescription;
-            this.DateEdition = DateTime.Now;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    // toggle done status for true or false
-    public void ToggleDone(bool done)
-    {
-        this.Done = done;
-    }
-
-    internal bool GetTask(int v)
-    {
-        throw new NotImplementedException();
-    }
-
-    // Return task data
-    public TaskModel GetTask()
-    {
-        return new TaskModel(this.Title!, this.Description!)
-        {
-            Id = this.Id,
-            Title = this.Title,
-            Description = this.Description,
-            Done = this.Done,
-            DateCreation = this.DateCreation,
-            DateEdition = this.DateEdition,
-        };
-    }
 }
