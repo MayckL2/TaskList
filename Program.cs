@@ -5,6 +5,7 @@ using TaskList.IServices;
 using TaskList.Middlewares;
 using TaskList.Repositories;
 using TaskList.Services;
+using TaskList.Mapping;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +21,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // AutoMapper Register
-builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddAutoMapper(typeof(TaskProfile));
 
 // TaskRepository scoped
 builder.Services.AddScoped<TaskRepository>();
