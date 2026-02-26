@@ -1,11 +1,12 @@
 using AutoMapper;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using TaskList.Contexts;
 using TaskList.IServices;
+using TaskList.Mapping;
 using TaskList.Middlewares;
 using TaskList.Repositories;
 using TaskList.Services;
-using TaskList.Mapping;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,13 +30,15 @@ builder.Services.AddScoped<TaskRepository>();
 // Taskservice scoped
 builder.Services.AddScoped<ITaskService, TaskService>();
 
+builder.Services.AddOpenApi();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    // app.AddOpenApi();
+    app.MapOpenApi();
 
     using var scope = app.Services.CreateScope();
     var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
