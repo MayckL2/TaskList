@@ -34,7 +34,6 @@ public class TaskRepository : ITaskRepository
     // Register task on database and return criation
     public async Task<ShowTaskDTO> CreateAsync(CreateTaskDTO Task)
     {
-        // TaskModel task = new(Task.Title, Task.Description);
         TaskModel task = _mapper.Map<TaskModel>(Task);
 
         task.DateCreation = DateTime.Now;
