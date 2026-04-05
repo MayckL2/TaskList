@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskList.DTOs;
 using TaskList.Services;
-using static TaskList.DTOs.RegisterDTO;
 
 namespace TaskList.Controllers;
 
@@ -20,130 +19,164 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Register([FromBody] RegisterDTO registerDto)
     {
         if (!ModelState.IsValid)
+        {
             return BadRequest(ModelState);
+        }
 
         var result = await _authService.RegisterAsync(registerDto);
 
         if (!result.Success)
+        {
             return BadRequest(result);
+        }
 
         return Ok(result);
     }
 
     [HttpPost("login")]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
     {
         if (!ModelState.IsValid)
+        {
             return BadRequest(ModelState);
+        }
 
-        var result = await _authService.LoginAsync(loginDto);
+        var ipAddress = GetIpAddress();
+        var result = await _authService.LoginAsync(loginDto, ipAddress);
 
         if (!result.Success)
-            return BadRequest(result);
+        {
+            return Unauthorized(result);
+        }
 
-        // Set refresh token in HTTP-only cookie
         SetRefreshTokenCookie(result.RefreshToken);
 
         return Ok(result);
     }
 
     [HttpPost("refresh-token")]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> RefreshToken()
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto? refreshTokenDto)
     {
-        var refreshToken =
-            Request.Cookies["refreshToken"]
-            ?? (Request.Headers["X-Refresh-Token"].FirstOrDefault());
+        var refreshToken = refreshTokenDto?.RefreshToken ?? Request.Cookies["refreshToken"];
 
         if (string.IsNullOrEmpty(refreshToken))
-            return BadRequest(new { message = "Refresh token não fornecido" });
+        {
+            return BadRequest(new { message = "Refresh token is required" });
+        }
 
-        var result = await _authService.RefreshTokenAsync(refreshToken);
+        var ipAddress = GetIpAddress();
+        var result = await _authService.RefreshTokenAsync(
+            new RefreshTokenDto { RefreshToken = refreshToken },
+            ipAddress
+        );
 
         if (!result.Success)
-            return BadRequest(result);
+        {
+            return Unauthorized(result);
+        }
 
         SetRefreshTokenCookie(result.RefreshToken);
 
         return Ok(result);
     }
 
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        var refreshToken = Request.Cookies["refreshToken"];
+
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            await _authService.LogoutAsync(refreshToken);
+        }
+
+        Response.Cookies.Delete("refreshToken");
+
+        return Ok(new { message = "Logout successful" });
+    }
+
+    [HttpGet("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail(
+        [FromQuery] string userId,
+        [FromQuery] string token
+    )
+    {
+        var result = await _authService.ConfirmEmailAsync(userId, token);
+
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
     [HttpPost("forgot-password")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
     {
         if (!ModelState.IsValid)
+        {
             return BadRequest(ModelState);
+        }
 
-        await _authService.ForgotPasswordAsync(forgotPasswordDto);
+        var result = await _authService.ForgotPasswordAsync(forgotPasswordDto.Email);
 
-        // Sempre retorna OK por segurança (não revelar se email existe)
-        return Ok(new { message = "Se o email existir, você receberá instruções de recuperação" });
+        return Ok(result);
     }
 
     [HttpPost("reset-password")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
     {
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var result = await _authService.ResetPasswordAsync(resetPasswordDto);
-
-        if (!result)
-            return BadRequest(new { message = "Erro ao resetar senha" });
-
-        return Ok(new { message = "Senha alterada com sucesso" });
-    }
-
-    [Authorize]
-    [HttpPost("logout")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> Logout()
-    {
-        var userId = User.FindFirst("user_id")?.Value;
-        var refreshToken = Request.Cookies["refreshToken"];
-
-        if (!string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(refreshToken))
         {
-            await _authService.LogoutAsync(userId, refreshToken);
+            return BadRequest(ModelState);
         }
 
-        // Remover cookie
-        Response.Cookies.Delete("refreshToken");
+        var result = await _authService.ResetPasswordAsync(
+            resetPasswordDto.Email,
+            resetPasswordDto.Token,
+            resetPasswordDto.NewPassword
+        );
 
-        return Ok(new { message = "Logout realizado com sucesso" });
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
     }
 
     [Authorize]
-    [HttpGet("profile")]
-    [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetProfile()
+    [HttpGet("me")]
+    public async Task<IActionResult> GetCurrentUser()
     {
-        var userId = User.FindFirst("user_id")?.Value;
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrEmpty(userId))
+        {
             return Unauthorized();
+        }
 
-        var profile = await _authService.GetUserProfileAsync(userId);
+        var user = await _authService.GetUserByIdAsync(userId);
 
-        if (profile == null)
+        if (user == null)
+        {
             return NotFound();
+        }
 
-        return Ok(profile);
+        return Ok(user);
+    }
+
+    private string GetIpAddress()
+    {
+        if (Request.Headers.ContainsKey("X-Forwarded-For"))
+            return Request.Headers["X-Forwarded-For"].ToString();
+
+        return HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "0.0.0.0";
     }
 
     private void SetRefreshTokenCookie(string refreshToken)
@@ -154,6 +187,7 @@ public class AuthController : ControllerBase
             Secure = true,
             SameSite = SameSiteMode.Strict,
             Expires = DateTime.UtcNow.AddDays(7),
+            Path = "/",
         };
 
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);

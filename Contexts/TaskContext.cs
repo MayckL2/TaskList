@@ -1,12 +1,10 @@
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.Extensions.Configuration;
 using TaskList.Models;
 
 namespace TaskList.Contexts;
 
-public class TaskContext : DbContext
+public class TaskContext : IdentityDbContext<User>
 {
     public TaskContext(DbContextOptions<TaskContext> options)
         : base(options) { }
@@ -23,40 +21,68 @@ public class TaskContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-modelBuilder.Entity<User>(entity =>
-    {
-        // Configurar Id como gerado pelo banco (Identity)
-        entity.Property(u => u.Id)
-            .HasDefaultValueSql("NEWID()")  // Para SQL Server
-            .ValueGeneratedOnAdd();
+        modelBuilder.Entity<TaskModel>().HasKey(t => t.Id);
+        // Configuração da tabela Users (já configurada pelo Identity)
+
+        // ✅ CORRETO: usar 'modelBuilder' em vez de 'builder'
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.Property(u => u.FullName).HasMaxLength(100).IsRequired();
+
+            entity.Property(u => u.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+            entity.HasIndex(u => u.Email).IsUnique();
         });
 
-        modelBuilder.Entity<TaskModel>().HasKey(t => t.Id);
-        modelBuilder.Entity<IdentityPasskeyData>().HasNoKey();
-
-        modelBuilder.Entity<Role>(entity =>
+        // ✅ CORRETO: usar 'modelBuilder'
+        modelBuilder.Entity<RefreshToken>(entity =>
         {
-            entity.HasKey(r => r.Id);
-            entity.HasIndex(r => r.NormalizedName).IsUnique();
-            entity.Property(r => r.Name).IsRequired().HasMaxLength(100);
-            entity.Property(r => r.NormalizedName).IsRequired().HasMaxLength(100);
+            entity.HasKey(rt => rt.Id);
+
+            entity.Property(rt => rt.Token).HasMaxLength(500).IsRequired();
+
+            entity.HasIndex(rt => rt.Token).IsUnique();
+
+            entity.Property(rt => rt.ExpiresAt).IsRequired();
+
+            entity.Property(rt => rt.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+            // Relacionamento com User
+            entity
+                .HasOne(rt => rt.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<UserRole>(entity =>
         {
             entity.HasKey(ur => new { ur.UserId, ur.RoleId });
-
-            entity
-                .HasOne(ur => ur.User)
-                .WithMany(u => u.UserRoles)
-                .HasForeignKey(ur => ur.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity
-                .HasOne(ur => ur.Role)
-                .WithMany(r => r.UserRoles)
-                .HasForeignKey(ur => ur.RoleId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
+        // Configuração da tabela UserClaims (customizada)
+        // builder.Entity<UserClaim>(entity =>
+        // {
+        //     entity.HasKey(uc => uc.Id);
+
+        //     entity.Property(uc => uc.ClaimType).HasMaxLength(100).IsRequired();
+
+        //     entity.Property(uc => uc.ClaimValue).HasMaxLength(100).IsRequired();
+
+        //     entity
+        //         .HasIndex(uc => new
+        //         {
+        //             uc.UserId,
+        //             uc.ClaimType,
+        //             uc.ClaimValue,
+        //         })
+        //         .IsUnique();
+
+        //     // Relacionamento com User
+        //     entity
+        //         .HasOne(uc => uc.User)
+        //         .WithMany(u => u.UserClaims)
+        //         .HasForeignKey(uc => uc.UserId)
+        //         .OnDelete(DeleteBehavior.Cascade);
+        // });
     }
 }

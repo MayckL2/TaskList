@@ -1,85 +1,80 @@
-using System.Security.Claims;
 using AutoMapper;
-using BCrypt.Net;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TaskList.Contexts;
-using TaskList.DTOs;
 using TaskList.Models;
 
 namespace TaskList.Repositories;
 
 public class UserRepository : IUserRepository
 {
+    private readonly UserManager<User> _userManager;
     private readonly TaskContext _context;
-    private readonly ILogger<UserRepository> _logger;
     private readonly IMapper _mapper;
+    private readonly ILogger<UserRepository> _logger;
 
-    public UserRepository(TaskContext context, ILogger<UserRepository> logger, IMapper mapper)
+    public UserRepository(
+        UserManager<User> userManager,
+        TaskContext context,
+        IMapper mapper,
+        ILogger<UserRepository> logger
+    )
     {
+        _userManager = userManager;
         _context = context;
-        _logger = logger;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task<User?> GetByIdAsync(string id)
     {
-        return await _context.Users.FirstOrDefaultAsync(u => u.Id.Equals(id));
+        return await _userManager.FindByIdAsync(id);
     }
 
     public async Task<User?> GetByEmailAsync(string email)
     {
-        return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        return await _userManager.FindByEmailAsync(email);
     }
 
     public async Task<User?> GetByRefreshTokenAsync(string refreshToken)
     {
-        return await _context
-            .Users.Include(u => u.RefreshTokens)
-            .FirstOrDefaultAsync(u =>
-                u.RefreshTokens.Any(t => t.Token == refreshToken && t.IsActive)
-            );
+        var token = await _context
+            .Set<RefreshToken>()
+            .Include(rt => rt.User)
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken && rt.IsActive);
+
+        return token?.User;
     }
 
-    public async Task<bool> CreateAsync(AuthUser user, string password)
+    public async Task<bool> CreateAsync(User user, string password)
     {
-        var createUser = _mapper.Map<User>(user);
-        createUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
-        createUser.CreatedAt = DateTime.UtcNow;
-        createUser.IsActive = true;
-        createUser.Id = "0";
-        _context.Users.Add(createUser);
+        var result = await _userManager.CreateAsync(user, password);
 
-        try
+        if (result.Succeeded)
         {
-            int affectedRows = await _context.SaveChangesAsync();
-            if (affectedRows > 0)
+            await _userManager.AddToRoleAsync(user, "User");
+            _logger.LogInformation("User created: {Email}", user.Email);
+        }
+        else
+        {
+            foreach (var error in result.Errors)
             {
-                Console.WriteLine($"User created sucefully!: {createUser.Id}");
+                _logger.LogWarning(
+                    "Error creating user {Email}: {Error}",
+                    user.Email,
+                    error.Description
+                );
             }
         }
-        catch (DbUpdateException ex)
-        {
-            Console.WriteLine($"❌ Database error: {ex.InnerException?.Message ?? ex.Message}");
-            throw;
-        }
 
-        return true;
+        return result.Succeeded;
     }
 
-    public async Task<bool> UpdateAsync(AuthUser user)
+    public async Task<bool> UpdateAsync(User user)
     {
-        var UpdateUser = _mapper.Map<User>(user);
-        UpdateUser.UpdatedAt = DateTime.UtcNow;
-        _context.SaveChanges();
-        var updatedUser = await this.GetByIdAsync(user.Id.ToString());
-        if (updatedUser == null)
-        {
-            throw new KeyNotFoundException(
-                $"User ID {user.Id.ToString()} not found after updated."
-            );
-        }
-        return true;
+        user.UpdatedAt = DateTime.UtcNow;
+        var result = await _userManager.UpdateAsync(user);
+        return result.Succeeded;
     }
 
     public async Task<bool> DeleteAsync(string id)
@@ -88,103 +83,186 @@ public class UserRepository : IUserRepository
         if (user == null)
             return false;
 
-        // Soft delete
         user.IsActive = false;
         user.DeletedAt = DateTime.UtcNow;
 
-        _context.SaveChanges();
-        var deletedUser = await this.GetByIdAsync(user.Id.ToString());
-        if (deletedUser == null)
-        {
-            throw new KeyNotFoundException(
-                $"User ID {user.Id.ToString()} not found after updated."
-            );
-        }
-        return true;
+        return await UpdateAsync(user);
     }
 
     public async Task<bool> CheckPasswordAsync(User user, string password)
     {
-        if (user == null)
-            return false;
+        return await _userManager.CheckPasswordAsync(user, password);
+    }
 
-        return BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
+    public async Task<string> GenerateEmailConfirmationTokenAsync(User user)
+    {
+        return await _userManager.GenerateEmailConfirmationTokenAsync(user);
+    }
+
+    public async Task<bool> ConfirmEmailAsync(User user, string token)
+    {
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+        return result.Succeeded;
     }
 
     public async Task<string> GeneratePasswordResetTokenAsync(User user)
     {
-        // Remover tokens antigos do mesmo usuário
-        var oldTokens = _context.RefreshTokens.Where(t => t.UserId == user.Id && !t.IsUsed);
-        _context.RefreshTokens.RemoveRange(oldTokens);
-
-        // Gerar novo token
-        var token = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = Convert.ToBase64String(Guid.NewGuid().ToByteArray()),
-            Expires = DateTime.UtcNow.AddHours(1), // Token válido por 1 hora
-            CreatedAt = DateTime.UtcNow,
-            IsUsed = false,
-        };
-
-        await _context.RefreshTokens.AddAsync(token);
-        await _context.SaveChangesAsync();
-
-        return token.Token;
+        return await _userManager.GeneratePasswordResetTokenAsync(user);
     }
 
-    public async Task<bool> ResetPasswordAsync(string userId, string token, string newPassword)
+    public async Task<bool> ResetPasswordAsync(User user, string token, string newPassword)
     {
-        // Buscar token válido
-        var resetToken = await _context.RefreshTokens.FirstOrDefaultAsync(t =>
-            t.UserId == userId && t.Token == token && !t.IsUsed && t.Expires > DateTime.UtcNow
-        );
+        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
 
-        if (resetToken == null)
-            return false;
-
-        // Buscar usuário
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null)
-            return false;
-
-        // 🔥 Atualizar senha com BCrypt
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-        user.UpdatedAt = DateTime.UtcNow;
-
-        // Marcar token como usado
-        resetToken.IsUsed = true;
-
-        // Revogar todos os refresh tokens do usuário (segurança)
-        if (user.RefreshTokens != null)
+        if (result.Succeeded)
         {
-            foreach (var rt in user.RefreshTokens)
-            {
-                rt.RevokedAt = DateTime.UtcNow;
-            }
+            await RevokeAllUserRefreshTokensAsync(user.Id);
+            _logger.LogInformation("Password reset for user: {Email}", user.Email);
         }
 
-        await _context.SaveChangesAsync();
-        return true;
+        return result.Succeeded;
     }
 
-    public async Task AddRefreshTokenAsync(User user, RefreshToken refreshToken)
+    public async Task AddRefreshTokenAsync(RefreshToken refreshToken)
     {
-        user.RefreshTokens ??= new List<RefreshToken>();
-        user.RefreshTokens.Add(refreshToken);
+        await _context.Set<RefreshToken>().AddAsync(refreshToken);
         await _context.SaveChangesAsync();
     }
 
     public async Task RevokeRefreshTokenAsync(string refreshToken)
     {
-        var token = await _context.RefreshTokens.FirstOrDefaultAsync(rt =>
-            rt.Token == refreshToken
-        );
+        var token = await _context
+            .Set<RefreshToken>()
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
 
-        if (token != null)
+        if (token != null && token.RevokedAt == null)
         {
             token.RevokedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
+    }
+
+    public async Task RevokeAllUserRefreshTokensAsync(string userId)
+    {
+        var tokens = await _context
+            .Set<RefreshToken>()
+            .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
+            .ToListAsync();
+
+        foreach (var token in tokens)
+        {
+            token.RevokedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<IList<string>> GetUserRolesAsync(User user)
+    {
+        return await _userManager.GetRolesAsync(user);
+    }
+
+    public async Task<bool> AddToRoleAsync(User user, string role)
+    {
+        var result = await _userManager.AddToRoleAsync(user, role);
+        return result.Succeeded;
+    }
+
+    public async Task<bool> IsLockedOutAsync(User user)
+    {
+        return await _userManager.IsLockedOutAsync(user);
+    }
+
+    public async Task<int> IncrementAccessFailedCountAsync(User user)
+    {
+        var result = await _userManager.AccessFailedAsync(user);
+        return await _userManager.GetAccessFailedCountAsync(user);
+    }
+
+    public async Task ResetAccessFailedCountAsync(User user)
+    {
+        await _userManager.ResetAccessFailedCountAsync(user);
+    }
+
+    // Add to existing UserRepository class
+    public async Task<List<string>> GetUserPermissionsAsync(User user)
+    {
+        var claims = await _userManager.GetClaimsAsync(user);
+        return claims.Where(c => c.Type == "permission").Select(c => c.Value).ToList();
+    }
+
+    public async Task<bool> AddPermissionAsync(User user, string permission)
+    {
+        var existingClaims = await _userManager.GetClaimsAsync(user);
+
+        if (existingClaims.Any(c => c.Type == "permission" && c.Value == permission))
+            return true; // Already exists
+
+        var result = await _userManager.AddClaimAsync(
+            user,
+            new System.Security.Claims.Claim("permission", permission)
+        );
+
+        return result.Succeeded;
+    }
+
+    public async Task<bool> AddPermissionsAsync(User user, IEnumerable<string> permissions)
+    {
+        var existingClaims = await _userManager.GetClaimsAsync(user);
+        var newPermissions = permissions
+            .Where(p => !existingClaims.Any(c => c.Type == "permission" && c.Value == p))
+            .Select(p => new System.Security.Claims.Claim("permission", p))
+            .ToList();
+
+        if (!newPermissions.Any())
+            return true;
+
+        var result = await _userManager.AddClaimsAsync(user, newPermissions);
+        return result.Succeeded;
+    }
+
+    public async Task<bool> RemovePermissionAsync(User user, string permission)
+    {
+        var claim = (await _userManager.GetClaimsAsync(user)).FirstOrDefault(c =>
+            c.Type == "permission" && c.Value == permission
+        );
+
+        if (claim == null)
+            return true;
+
+        var result = await _userManager.RemoveClaimAsync(user, claim);
+        return result.Succeeded;
+    }
+
+    public async Task<bool> HasPermissionAsync(User user, string permission)
+    {
+        var permissions = await GetUserPermissionsAsync(user);
+        return permissions.Contains(permission);
+    }
+
+    public async Task<bool> ReplaceUserPermissionsAsync(User user, IEnumerable<string> permissions)
+    {
+        var existingClaims = (await _userManager.GetClaimsAsync(user))
+            .Where(c => c.Type == "permission")
+            .ToList();
+
+        // Remove all existing permission claims
+        foreach (var claim in existingClaims)
+        {
+            await _userManager.RemoveClaimAsync(user, claim);
+        }
+
+        // Add new permissions
+        var newClaims = permissions
+            .Select(p => new System.Security.Claims.Claim("permission", p))
+            .ToList();
+
+        if (newClaims.Any())
+        {
+            var result = await _userManager.AddClaimsAsync(user, newClaims);
+            return result.Succeeded;
+        }
+
+        return true;
     }
 }

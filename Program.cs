@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -6,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using TaskList.Contexts;
+using TaskList.Data;
 using TaskList.IServices;
 using TaskList.Middlewares;
 using TaskList.Models;
@@ -19,11 +21,34 @@ builder.Services.AddDbContext<TaskContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
+// Identity
+builder
+    .Services.AddIdentity<User, IdentityRole>(options =>
+    {
+        // Password settings
+        options.Password.RequireDigit = true;
+        options.Password.RequiredLength = 6;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireLowercase = true;
+
+        // Lockout settings
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.AllowedForNewUsers = true;
+
+        // User settings
+        options.User.RequireUniqueEmail = true;
+    })
+    .AddEntityFrameworkStores<TaskContext>()
+    .AddDefaultTokenProviders();
+
 // JWT Settings
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey =
+    jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
 builder.Services.Configure<JwtSettings>(jwtSettings);
 
-var secretKey = jwtSettings["SecretKey"];
 if (string.IsNullOrEmpty(secretKey))
 {
     throw new InvalidOperationException("A chave secreta JWT não está configurada.");
@@ -50,16 +75,35 @@ builder
             ValidAudience = jwtSettings["Audience"],
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero,
+            RoleClaimType = ClaimTypes.Role,
         };
 
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
             {
-                if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
-                {
-                    context.Response.Headers.Add("Token-Expired", "true");
-                }
+                Console.WriteLine($"❌ Authentication failed: {context.Exception.Message}");
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                Console.WriteLine($"✅ Token validated successfully");
+                Console.WriteLine($"   User: {context.Principal?.Identity?.Name}");
+                Console.WriteLine(
+                    $"   Claims: {string.Join(", ", context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}"))}"
+                );
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                Console.WriteLine($"⚠️ Challenge: {context.Error}, {context.ErrorDescription}");
+                return Task.CompletedTask;
+            },
+            OnMessageReceived = context =>
+            {
+                Console.WriteLine(
+                    $"📨 Token received: {context.Token?.Substring(0, Math.Min(50, context.Token?.Length ?? 0))}..."
+                );
                 return Task.CompletedTask;
             },
         };
@@ -93,31 +137,15 @@ builder.Services.AddSwaggerGen(c =>
         "Bearer",
         new OpenApiSecurityScheme
         {
-            Description =
-                "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token",
             Name = "Authorization",
-            In = ParameterLocation.Header,
             Type = SecuritySchemeType.ApiKey,
             Scheme = "Bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description =
+                "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token",
         }
     );
-
-    // c.AddSecurityRequirement(
-    //     new OpenApiSecurityRequirement
-    //     {
-    //         {
-    //             new OpenApiSecurityScheme
-    //             {
-    //                 Reference = new OpenApiReference
-    //                 {
-    //                     Type = ReferenceType.SecurityScheme,
-    //                     Id = "Bearer",
-    //                 },
-    //             },
-    //             Array.Empty<string>()
-    //         },
-    //     }
-    // );
 });
 
 // AutoMapper Register
@@ -132,8 +160,23 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        await SeedData.InitializeAsync(services);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Erro ao executar o seeder de dados.");
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -172,8 +215,8 @@ app.UseHttpsRedirection();
 // Adding midlewares
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
-app.UseAuthentication();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

@@ -1,15 +1,15 @@
 using TaskList.DTOs;
-using static TaskList.DTOs.RegisterDTO;
 
 namespace TaskList.Services;
 
 public interface IAuthService
 {
     Task<AuthResponseDto> RegisterAsync(RegisterDTO registerDto);
-    Task<AuthResponseDto> LoginAsync(LoginDto loginDto);
-    Task<AuthResponseDto> RefreshTokenAsync(string refreshToken);
-    Task<bool> ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);
-    Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
-    Task<bool> LogoutAsync(string userId, string refreshToken);
-    Task<UserResponseDto> GetUserProfileAsync(string userId);
+    Task<AuthResponseDto> LoginAsync(LoginDto loginDto, string ipAddress);
+    Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenDto refreshTokenDto, string ipAddress);
+    Task<AuthResponseDto> LogoutAsync(string refreshToken);
+    Task<AuthResponseDto> ConfirmEmailAsync(string userId, string token);
+    Task<AuthResponseDto> ForgotPasswordAsync(string email);
+    Task<AuthResponseDto> ResetPasswordAsync(string email, string token, string newPassword);
+    Task<UserResponseDto?> GetUserByIdAsync(string userId);
 }

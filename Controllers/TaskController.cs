@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskList.Contexts;
 using TaskList.DTOs;
@@ -29,6 +30,7 @@ public class TaskController : ControllerBase
 
     // List all tasks
     [HttpGet("ListTasks")]
+    [Authorize(Roles = "User, Admin")]
     public async Task<IActionResult> ListTasks()
     {
         return Ok(await _taskService.GetAllAsync());
