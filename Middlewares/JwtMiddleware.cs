@@ -1,9 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.IdentityModel.Tokens;
-using TaskList.Contexts;
 
 namespace TaskList.Middlewares;
 
@@ -11,67 +9,119 @@ public class JwtMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<JwtMiddleware> _logger;
 
-    public JwtMiddleware(RequestDelegate next, IConfiguration configuration)
+    public JwtMiddleware(
+        RequestDelegate next,
+        IConfiguration configuration,
+        ILogger<JwtMiddleware> logger
+    )
     {
         _next = next;
         _configuration = configuration;
+        _logger = logger;
     }
 
-    public async Task Invoke(HttpContext context, TaskContext dbContext)
+    public async Task InvokeAsync(HttpContext context)
     {
         var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
-        if (token != null)
+        if (!string.IsNullOrEmpty(token))
         {
-            await AttachUserToContext(context, dbContext, token);
+            var user = AttachUserFromToken(token);
+            if (user != null)
+            {
+                context.User = user;
+                _logger.LogDebug($"✅ Usuário autenticado: {user.Identity?.Name}");
+            }
+            else
+            {
+                _logger.LogWarning("❌ Falha ao autenticar token");
+            }
+        }
+        else
+        {
+            _logger.LogDebug("🔑 Nenhum token encontrado na requisição");
         }
 
         await _next(context);
     }
 
-    private async Task AttachUserToContext(HttpContext context, TaskContext dbContext, string token)
+    private ClaimsPrincipal? AttachUserFromToken(string token)
     {
         try
         {
             var jwtSettings = _configuration.GetSection("JwtSettings");
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(jwtSettings["Secret"]);
+            var secretKey = jwtSettings["SecretKey"];
+            var issuer = jwtSettings["Issuer"];
+            var audience = jwtSettings["Audience"];
 
-            tokenHandler.ValidateToken(
+            if (string.IsNullOrEmpty(secretKey) || secretKey.Length < 32)
+            {
+                _logger.LogError("❌ JWT SecretKey inválida ou muito curta (mínimo 32 caracteres)");
+                return null;
+            }
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(secretKey);
+
+            // 🔥 VALIDAÇÃO COMPLETA DO TOKEN
+            var validationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+                ValidateIssuer = true,
+                ValidIssuer = issuer,
+                ValidateAudience = true,
+                ValidAudience = audience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero,
+                RoleClaimType = ClaimTypes.Role, // 👈 Mapeia roles corretamente
+            };
+
+            var principal = tokenHandler.ValidateToken(
                 token,
-                new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = true,
-                    ValidIssuer = jwtSettings["Issuer"],
-                    ValidateAudience = true,
-                    ValidAudience = jwtSettings["Audience"],
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero,
-                },
+                validationParameters,
                 out SecurityToken validatedToken
             );
 
-            var jwtToken = (JwtSecurityToken)validatedToken;
-            var userId = int.Parse(
-                jwtToken.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value
-            );
-
-            var user = await dbContext.Users.FindAsync(userId);
-
-            if (user != null)
+            var jwtToken = validatedToken as JwtSecurityToken;
+            if (jwtToken == null)
             {
-                var claims = jwtToken.Claims.ToList();
-                var identity = new ClaimsIdentity(claims, "jwt");
-                context.User = new ClaimsPrincipal(identity);
+                _logger.LogWarning("❌ Token não é um JWT válido");
+                return null;
             }
+
+            // 🔥 LOG DETALHADO DAS CLAIMS (para debug)
+            _logger.LogDebug($"📋 Claims do token:");
+            foreach (var claim in principal.Claims)
+            {
+                _logger.LogDebug($"   {claim.Type}: {claim.Value}");
+            }
+
+            return principal;
         }
-        catch
+        catch (SecurityTokenExpiredException ex)
         {
-            Console.WriteLine("Teste se o erro veio para ca!!!!");
-            // Não fazer nada se a validação falhar
+            _logger.LogWarning($"⏰ Token expirado: {ex.Message}");
         }
+        catch (SecurityTokenInvalidSignatureException ex)
+        {
+            _logger.LogWarning($"🔑 Assinatura do token inválida: {ex.Message}");
+        }
+        catch (SecurityTokenInvalidIssuerException ex)
+        {
+            _logger.LogWarning($"🏢 Issuer inválido: {ex.Message}");
+        }
+        catch (SecurityTokenInvalidAudienceException ex)
+        {
+            _logger.LogWarning($"👥 Audience inválida: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"❌ Erro ao validar token: {ex.Message}");
+        }
+
+        return null;
     }
 }

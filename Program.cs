@@ -43,72 +43,6 @@ builder
     .AddEntityFrameworkStores<TaskContext>()
     .AddDefaultTokenProviders();
 
-// JWT Settings
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey =
-    jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
-builder.Services.Configure<JwtSettings>(jwtSettings);
-
-if (string.IsNullOrEmpty(secretKey))
-{
-    throw new InvalidOperationException("A chave secreta JWT não está configurada.");
-}
-var key = Encoding.ASCII.GetBytes(secretKey);
-
-builder
-    .Services.AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
-    {
-        options.RequireHttpsMetadata = false;
-        options.SaveToken = true;
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(key),
-            ValidateIssuer = true,
-            ValidIssuer = jwtSettings["Issuer"],
-            ValidateAudience = true,
-            ValidAudience = jwtSettings["Audience"],
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero,
-            RoleClaimType = ClaimTypes.Role,
-        };
-
-        options.Events = new JwtBearerEvents
-        {
-            OnAuthenticationFailed = context =>
-            {
-                Console.WriteLine($"❌ Authentication failed: {context.Exception.Message}");
-                return Task.CompletedTask;
-            },
-            OnTokenValidated = context =>
-            {
-                Console.WriteLine($"✅ Token validated successfully");
-                Console.WriteLine($"   User: {context.Principal?.Identity?.Name}");
-                Console.WriteLine(
-                    $"   Claims: {string.Join(", ", context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}"))}"
-                );
-                return Task.CompletedTask;
-            },
-            OnChallenge = context =>
-            {
-                Console.WriteLine($"⚠️ Challenge: {context.Error}, {context.ErrorDescription}");
-                return Task.CompletedTask;
-            },
-            OnMessageReceived = context =>
-            {
-                Console.WriteLine(
-                    $"📨 Token received: {context.Token?.Substring(0, Math.Min(50, context.Token?.Length ?? 0))}..."
-                );
-                return Task.CompletedTask;
-            },
-        };
-    });
-
 // CORS
 builder.Services.AddCors(options =>
 {
@@ -147,6 +81,46 @@ builder.Services.AddSwaggerGen(c =>
         }
     );
 });
+
+builder
+    .Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        // 🔥 IMPORTANTE: Desabilitar validação automática
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+
+        // ⚠️ Configuração mínima - a validação real será feita no middleware
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = false, // Desabilitado - middleware fará
+            ValidateIssuer = false, // Desabilitado - middleware fará
+            ValidateAudience = false, // Desabilitado - middleware fará
+            ValidateLifetime = false, // Desabilitado - middleware fará
+            ClockSkew = TimeSpan.Zero,
+        };
+
+        // 🔥 Evento para log de tentativas
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = context =>
+            {
+                Console.WriteLine(
+                    $"⚠️ Desafio de autenticação: {context.Error}, {context.ErrorDescription}"
+                );
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine($"❌ Falha na autenticação: {context.Exception.Message}");
+                return Task.CompletedTask;
+            },
+        };
+    });
 
 // AutoMapper Register
 builder.Services.AddAutoMapper(typeof(Program));
@@ -215,6 +189,7 @@ app.UseHttpsRedirection();
 // Adding midlewares
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<JwtMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

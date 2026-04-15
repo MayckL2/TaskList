@@ -30,7 +30,6 @@ public class TaskController : ControllerBase
 
     // List all tasks
     [HttpGet("ListTasks")]
-    [Authorize(Roles = "User, Admin")]
     public async Task<IActionResult> ListTasks()
     {
         return Ok(await _taskService.GetAllAsync());
