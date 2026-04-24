@@ -19,6 +19,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
+    [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] RegisterDTO registerDto)
     {
         if (!ModelState.IsValid)
@@ -37,6 +38,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
     {
         if (!ModelState.IsValid)
@@ -58,6 +60,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh-token")]
+    [AllowAnonymous]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto? refreshTokenDto)
     {
         var refreshToken = refreshTokenDto?.RefreshToken ?? Request.Cookies["refreshToken"];
@@ -100,9 +103,8 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("confirm-email")]
-    public async Task<IActionResult> ConfirmEmail(
-        [FromQuery] string userId,
-        [FromQuery] string token
+    [AllowAnonymous]
+    public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token
     )
     {
         var result = await _authService.ConfirmEmailAsync(userId, token);
@@ -116,6 +118,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("forgot-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
     {
         if (!ModelState.IsValid)
@@ -129,6 +132,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("reset-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
     {
         if (!ModelState.IsValid)

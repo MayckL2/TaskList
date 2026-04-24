@@ -1,11 +1,7 @@
-using System.Security.Claims;
-using System.Text;
 using AutoMapper;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models;
 using TaskList.Contexts;
 using TaskList.Data;
 using TaskList.IServices;
@@ -72,7 +68,7 @@ builder.Services.AddSwaggerGen(c =>
         new OpenApiSecurityScheme
         {
             Name = "Authorization",
-            Type = SecuritySchemeType.ApiKey,
+            Type = SecuritySchemeType.Http,
             Scheme = "Bearer",
             BearerFormat = "JWT",
             In = ParameterLocation.Header,
@@ -82,45 +78,6 @@ builder.Services.AddSwaggerGen(c =>
     );
 });
 
-builder
-    .Services.AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
-    {
-        // 🔥 IMPORTANTE: Desabilitar validação automática
-        options.RequireHttpsMetadata = false;
-        options.SaveToken = true;
-
-        // ⚠️ Configuração mínima - a validação real será feita no middleware
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = false, // Desabilitado - middleware fará
-            ValidateIssuer = false, // Desabilitado - middleware fará
-            ValidateAudience = false, // Desabilitado - middleware fará
-            ValidateLifetime = false, // Desabilitado - middleware fará
-            ClockSkew = TimeSpan.Zero,
-        };
-
-        // 🔥 Evento para log de tentativas
-        options.Events = new JwtBearerEvents
-        {
-            OnChallenge = context =>
-            {
-                Console.WriteLine(
-                    $"⚠️ Desafio de autenticação: {context.Error}, {context.ErrorDescription}"
-                );
-                return Task.CompletedTask;
-            },
-            OnAuthenticationFailed = context =>
-            {
-                Console.WriteLine($"❌ Falha na autenticação: {context.Exception.Message}");
-                return Task.CompletedTask;
-            },
-        };
-    });
 
 // AutoMapper Register
 builder.Services.AddAutoMapper(typeof(Program));
