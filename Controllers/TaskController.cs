@@ -76,11 +76,11 @@ public class TaskController : ControllerBase
     }
 
     // Update task status done
-    [HttpPatch("CompleteTask/{id}/{done}")]
+    [HttpPatch("ChangeStatus/{id}/{done}")]
     [Authorize]
-    public async Task<IActionResult> CompleteTask(int id, bool done)
+    public async Task<IActionResult> ChangeStatusTask(int id, bool done)
     {
-        var result = await _taskService.CompleteTaskAsync(id, done);
+        var result = await _taskService.ChangeStatusAsync(id, done);
         if (result == null)
         {
             return BadRequest("Task not found...");

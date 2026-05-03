@@ -64,13 +64,13 @@ public class TaskService : ITaskService
         return false;
     }
 
-    // Update task status done or return null if id was not find
-    public async Task<ShowTaskDTO?> CompleteTaskAsync(int id, bool done)
+    // Update task status or return null if id was not find
+    public async Task<ShowTaskDTO?> ChangeStatusAsync(int id, bool done)
     {
         var task = await _repository.GetByIdAsync(id);
         if (task == null)
             return null;
 
-        return await _repository.CompleteTaskAsync(task, done);
+        return await _repository.ChangeStatusAsync(task, done);
     }
 }

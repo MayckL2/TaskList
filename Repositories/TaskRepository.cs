@@ -85,7 +85,7 @@ public class TaskRepository : ITaskRepository
     }
 
     // Uptade status done of the task
-    public async Task<ShowTaskDTO?> CompleteTaskAsync(ShowTaskDTO task, bool done)
+    public async Task<ShowTaskDTO?> ChangeStatusAsync(ShowTaskDTO task, bool done)
     {
         task.Done = done;
         _context.SaveChanges();
