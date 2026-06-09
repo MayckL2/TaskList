@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskList.Contexts;
 using TaskList.DTOs;
@@ -21,6 +22,7 @@ public class TaskController : ControllerBase
 
     // Create a new task with name and description
     [HttpPost("CreateTask")]
+    [Authorize]
     public async Task<IActionResult> CreateTask(CreateTaskDTO Task)
     {
         var result = await _taskService.CreateAsync(Task);
@@ -29,6 +31,7 @@ public class TaskController : ControllerBase
 
     // List all tasks
     [HttpGet("ListTasks")]
+    [AllowAnonymous]
     public async Task<IActionResult> ListTasks()
     {
         return Ok(await _taskService.GetAllAsync());
@@ -36,6 +39,7 @@ public class TaskController : ControllerBase
 
     // // Consult a task by id
     [HttpGet("ConsultTask/{id}")]
+    [AllowAnonymous]
     public async Task<IActionResult> ConsultTask(int id)
     {
         var result = await _taskService.GetByIdAsync(id);
@@ -48,6 +52,7 @@ public class TaskController : ControllerBase
 
     // // Update a task by id
     [HttpPut("UpdateTask/{id}")]
+    [Authorize]
     public async Task<IActionResult> UpdateTask(int id, UpdateTaskDTO updatedTask)
     {
         var update = await _taskService.UpdateAsync(id, updatedTask);
@@ -56,6 +61,7 @@ public class TaskController : ControllerBase
 
     // // Delete a task by id
     [HttpDelete("DeleteTask/{id}")]
+    [Authorize]
     public async Task<IActionResult> DeleteTask(int id)
     {
         var delete = await _taskService.DeleteAsync(id);
@@ -70,10 +76,11 @@ public class TaskController : ControllerBase
     }
 
     // Update task status done
-    [HttpPatch("CompleteTask/{id}/{done}")]
-    public async Task<IActionResult> CompleteTask(int id, bool done)
+    [HttpPatch("ChangeStatus/{id}/{done}")]
+    [Authorize]
+    public async Task<IActionResult> ChangeStatusTask(int id, bool done)
     {
-        var result = await _taskService.CompleteTaskAsync(id, done);
+        var result = await _taskService.ChangeStatusAsync(id, done);
         if (result == null)
         {
             return BadRequest("Task not found...");
