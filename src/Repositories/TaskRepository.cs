@@ -21,7 +21,7 @@ public class TaskRepository : ITaskRepository
     // Search by Id and return the task or null
     public async Task<ShowTaskDTO?> GetByIdAsync(int id)
     {
-        var query = await _context.Tasks.FirstOrDefaultAsync(c => c.Id == id);
+        var query = await _context.Tasks.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
         return _mapper.Map<ShowTaskDTO>(query);
     }
 
