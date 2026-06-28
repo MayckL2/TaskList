@@ -13,6 +13,13 @@ using TaskList.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add redis chache
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "TaskList";
+});
+
 // Add services to the container.
 builder.Services.AddDbContext<TaskContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
