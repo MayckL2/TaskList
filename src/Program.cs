@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
+using Serilog;
 using TaskList.Contexts;
 using TaskList.Data;
 using TaskList.Middlewares;
@@ -12,6 +13,22 @@ using TaskList.Repositories;
 using TaskList.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog for logs configuration
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration) // Lê do appsettings.json
+    .Enrich.FromLogContext() // Adiciona contexto (ex: CorrelationId)
+    .Enrich.WithMachineName() // Adiciona nome da máquina
+    .Enrich.WithThreadId() // Adiciona ID da thread
+    .WriteTo.Console() // Log no console
+    .WriteTo.Seq(
+        serverUrl: "http://localhost:5341", // URL do Seq
+        apiKey: null // Opcional: chave de API para autenticação
+    // controlLevelSwitch: null // Opcional: para mudar nível em tempo real
+    )
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // Add redis chache
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -108,6 +125,18 @@ builder
 
 var app = builder.Build();
 
+// 🔥 Middleware for logs requisitions
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate =
+        "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("User", httpContext.User.Identity?.Name);
+        diagnosticContext.Set("RemoteIp", httpContext.Connection.RemoteIpAddress?.ToString());
+    };
+});
+
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -167,7 +196,21 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/ping", () => "pong");
 
-app.Run();
+app.UseSerilogRequestLogging();
+
+try
+{
+    Log.Information("🚀 Aplicação iniciada com sucesso");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "❌ Falha crítica na inicialização");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 public class ApiHealthCheck : IHealthCheck
 {
