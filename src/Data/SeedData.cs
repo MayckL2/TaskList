@@ -11,8 +11,8 @@ public static class SeedData
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
 
-        // 🔥 Criar roles padrão
-        string[] roles = { "User", "Admin" };
+        // Create roles by default
+        string[] roles = { "User", "Manager", "Admin" };
 
         foreach (var role in roles)
         {
@@ -23,7 +23,7 @@ public static class SeedData
             }
         }
 
-        // 🔥 Criar usuário Admin padrão (opcional)
+        // Create admin user by default (optional)
         var adminEmail = "admin@tasklist.com";
         var adminUser = await userManager.FindByEmailAsync(adminEmail);
 
