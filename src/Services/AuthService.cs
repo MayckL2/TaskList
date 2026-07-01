@@ -1,5 +1,7 @@
+using System.Text;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using TaskList.DTOs;
 using TaskList.Models;
 using TaskList.Repositories;
@@ -218,6 +220,7 @@ public class AuthService : IAuthService
     public async Task<AuthResponseDto> ForgotPasswordAsync(string email)
     {
         var user = await _userRepository.GetByEmailAsync(email);
+        var userResponse = _mapper.Map<UserResponseDto>(user);
 
         // Don't reveal if user exists (security)
         if (user == null)
@@ -226,22 +229,28 @@ public class AuthService : IAuthService
             {
                 Success = true,
                 Message = "If your email is registered, you will receive a password reset link",
+                User = userResponse,
             };
         }
 
         var token = await _userRepository.GeneratePasswordResetTokenAsync(user);
+        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        _logger.LogInformation($"Codificado: {encodedToken}");
 
         // In production: send email with reset link
         _logger.LogInformation(
             "Password reset requested for {Email}. Token: {Token}",
             email,
-            token
+            encodedToken
         );
 
         return new AuthResponseDto
         {
             Success = true,
             Message = "If your email is registered, you will receive a password reset link",
+            AccessToken = encodedToken,
+            ExpiresIn = 86400,
+            User = userResponse,
         };
     }
 
@@ -258,7 +267,11 @@ public class AuthService : IAuthService
             return new AuthResponseDto { Success = false, Message = "Invalid request" };
         }
 
-        var result = await _userRepository.ResetPasswordAsync(user, token, newPassword);
+        _logger.LogInformation($"SecurityStamp do usuário: {user.SecurityStamp}");
+        var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+        _logger.LogInformation($"Decodificado: {decodedToken}");
+
+        var result = await _userRepository.ResetPasswordAsync(user, decodedToken, newPassword);
 
         if (!result)
         {

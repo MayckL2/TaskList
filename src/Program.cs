@@ -1,10 +1,12 @@
 using AutoMapper;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using StackExchange.Redis;
 using TaskList.Contexts;
 using TaskList.Data;
 using TaskList.Middlewares;
@@ -122,6 +124,16 @@ builder
     .Services.AddHealthChecks()
     .AddDbContextCheck<TaskContext>("database")
     .AddCheck<IHealthCheck>("api");
+
+// Correction for reset password to work
+// Configuring data protection between requisitions(instances) for password reset token to work
+builder
+    .Services.AddDataProtection()
+    .PersistKeysToStackExchangeRedis(
+        ConnectionMultiplexer.Connect("localhost:6379"),
+        "DataProtection-Keys"
+    )
+    .SetApplicationName("TaskListAPI");
 
 var app = builder.Build();
 
