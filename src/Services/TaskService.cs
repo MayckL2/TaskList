@@ -43,9 +43,9 @@ public class TaskService : ITaskService
     }
 
     // Update task
-    public async Task<ShowTaskDTO> UpdateAsync(int id, UpdateTaskDTO task)
+    public async Task<ShowTaskDTO> UpdateAsync(UpdateTaskDTO task)
     {
-        return await _repository.UpdateAsync(id, task);
+        return await _repository.UpdateAsync(task.Id, task);
     }
 
     // Delete task if id exists and return bool

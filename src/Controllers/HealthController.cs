@@ -8,11 +8,11 @@ namespace TaskList.Controllers;
 [Route("api/[controller]")]
 public class HealthController : ControllerBase
 {
-    private readonly HealthService _healthService;
+    private readonly IHealthService _healthService;
 
-    public HealthController(HealthService healthService)
+    public HealthController(IHealthService healthService)
     {
-        HealthService _healthService = healthService;
+        IHealthService _healthService = healthService;
     }
 
     [HttpGet]

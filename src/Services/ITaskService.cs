@@ -8,7 +8,7 @@ namespace TaskList.Services
         Task<ShowTaskDTO> CreateAsync(CreateTaskDTO task);
         Task<List<ShowTaskDTO>> GetAllAsync();
         Task<ShowTaskDTO?> GetByIdAsync(int id);
-        Task<ShowTaskDTO> UpdateAsync(int id, UpdateTaskDTO task);
+        Task<ShowTaskDTO> UpdateAsync(UpdateTaskDTO task);
         Task<bool> DeleteAsync(int id);
         Task<ShowTaskDTO?> ChangeStatusAsync(int id, bool done);
     }

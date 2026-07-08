@@ -127,11 +127,11 @@ public class TaskController : ControllerBase
     // Update a task by id
     [HttpPut("UpdateTask/{id}")]
     [Authorize]
-    public async Task<IActionResult> UpdateTask(int id, UpdateTaskDTO updatedTask)
+    public async Task<IActionResult> UpdateTask(UpdateTaskDTO updatedTask)
     {
-        var update = await _taskService.UpdateAsync(id, updatedTask);
+        var update = await _taskService.UpdateAsync(updatedTask);
 
-        await _cache.RemoveAsync($"tarefa:{id}");
+        await _cache.RemoveAsync($"tarefa:{updatedTask.Id}");
         _logger.LogInformation("🗑️ Cache da lista invalidado");
 
         return Ok(update);

@@ -36,6 +36,9 @@ public class CreateTaskDTO
 
 public class UpdateTaskDTO
 {
+    [Required(ErrorMessage = "Id is required...")]
+    public required int Id { get; set; }
+
     [StringLength(
         100,
         MinimumLength = 3,
