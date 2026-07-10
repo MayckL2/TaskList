@@ -1,4 +1,7 @@
+using Gridify;
+using Gridify.EntityFramework;
 using TaskList.DTOs;
+using TaskList.Models;
 
 namespace TaskList.Repositories;
 
@@ -8,6 +11,7 @@ public interface ITaskRepository
     Task<ShowTaskDTO?> GetByIdAsync(int id);
 
     IQueryable<ShowTaskDTO> GetAllAsync();
+    IQueryable<TaskModel> GetQueryable();
 
     // Task<IEnumerable<TaskModel>> GetTaskUndoneAsync();
     // Task<TaskModel> GetByEmailAsync(string email);

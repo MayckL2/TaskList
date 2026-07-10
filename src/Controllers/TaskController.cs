@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Gridify;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
@@ -171,6 +172,15 @@ public class TaskController : ControllerBase
         {
             return BadRequest("Task not found...");
         }
+        return Ok(result);
+    }
+
+    // Return filtered tasks with gridify
+    [HttpGet("Filter")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetFilteredTasks([FromQuery] GridifyQuery query)
+    {
+        var result = await _taskService.GetFilteredTasksAsync(query);
         return Ok(result);
     }
 }

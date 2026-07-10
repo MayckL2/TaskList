@@ -1,3 +1,4 @@
+using Gridify;
 using TaskList.DTOs;
 using TaskList.Models;
 
@@ -11,5 +12,6 @@ namespace TaskList.Services
         Task<ShowTaskDTO> UpdateAsync(UpdateTaskDTO task);
         Task<bool> DeleteAsync(int id);
         Task<ShowTaskDTO?> ChangeStatusAsync(int id, bool done);
+        Task<Paging<ShowTaskDTO>> GetFilteredTasksAsync(GridifyQuery gridifyQuery);
     }
 }
