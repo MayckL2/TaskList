@@ -8,25 +8,25 @@ namespace TaskList.GraphQL;
 
 public class TaskSubscription
 {
-    // 🔥 Subscription que notifica quando uma tarefa é criada
+    // 🔥 Subscription that notify when a task is created
     [Subscribe]
     public Task<ShowTaskDTO> OnTaskCreated([EventMessage] ShowTaskDTO task) =>
         Task.FromResult(task);
 
-    // 🔥 Subscription que notifica quando uma tarefa é atualizada
+    // 🔥 Subscription that notify when a task is updated
     [Subscribe]
     public Task<ShowTaskDTO> OnTaskUpdated([EventMessage] ShowTaskDTO task) =>
         Task.FromResult(task);
 
-    // 🔥 Subscription que notifica quando uma tarefa é deletada
+    // 🔥 Subscription that notify when a task is deleted
     [Subscribe]
     public Task<int> OnTaskDeleted([EventMessage] int taskId) => Task.FromResult(taskId);
 
-    // 🔥 Subscription com filtro (apenas tarefas concluídas)
-    [Subscribe]
-    public Task<ShowTaskDTO> OnTaskCompleted([EventMessage] ShowTaskDTO task)
-    {
-        // Só envia se a tarefa foi concluída
-        return Task.FromResult(task);
-    }
+    // 🔥 Subscription with filter (only concluded tasks) - NOT WORKING!!!!!
+    // [Subscribe]
+    // public Task<ShowTaskDTO> OnTaskCompleted([EventMessage] ShowTaskDTO task)
+    // {
+    //     // Só envia se a tarefa foi concluída
+    //     return Task.FromResult(task);
+    // }
 }

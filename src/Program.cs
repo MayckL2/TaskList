@@ -136,12 +136,12 @@ builder
     )
     .SetApplicationName("TaskListAPI");
 
-// 🔥 Adiciona o servidor GraphQL
+// 🔥 Adding GraphQL to the server
 builder
     .Services.AddGraphQLServer()
-    .AddQueryType<TaskQuery>() // 👈 Registra as queries
-    .AddMutationType<TaskMutation>() // 👈 Registra as mutations
-    .AddSubscriptionType<TaskSubscription>() // 👈 NOVO
+    .AddQueryType<TaskQuery>()
+    .AddMutationType<TaskMutation>()
+    .AddSubscriptionType<TaskSubscription>()
     .AddInMemorySubscriptions();
 
 // .AddSocketSessionInterceptor<CustomSocketInterceptor>(); // 👈 Armazenamento em memória
