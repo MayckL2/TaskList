@@ -19,11 +19,11 @@ public class HealthService : IHealthService
         try
         {
             var canConnect = await _context.Database.CanConnectAsync();
-            // 🔥 Tenta conectar ao banco com timeout
+            // Try to connect to the database
 
             if (canConnect)
             {
-                // 🔥 Executa uma consulta real para garantir que o banco está respondendo
+                // Execute a real query to check database response
                 await _context.Database.ExecuteSqlRawAsync("SELECT 1");
                 return "Connected";
             }

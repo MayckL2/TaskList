@@ -12,7 +12,7 @@ public class HealthController : ControllerBase
 
     public HealthController(IHealthService healthService)
     {
-        IHealthService _healthService = healthService;
+        _healthService = healthService;
     }
 
     [HttpGet]
