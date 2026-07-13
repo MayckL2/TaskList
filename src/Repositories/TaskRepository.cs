@@ -1,8 +1,10 @@
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using TaskList.Contexts;
 using TaskList.DTOs;
+using TaskList.Hubs;
 using TaskList.Models;
 
 namespace TaskList.Repositories;
@@ -11,11 +13,13 @@ public class TaskRepository : ITaskRepository
 {
     private readonly TaskContext _context;
     private readonly IMapper _mapper;
+    private readonly IHubContext<TaskHub> _hubContext;
 
-    public TaskRepository(TaskContext context, IMapper mapper)
+    public TaskRepository(TaskContext context, IMapper mapper, IHubContext<TaskHub> hubContext)
     {
         _context = context;
         _mapper = mapper;
+        _hubContext = hubContext;
     }
 
     // Search by Id and return the task or null
@@ -46,6 +50,10 @@ public class TaskRepository : ITaskRepository
         {
             Console.WriteLine($"Id da task: {task.Id}");
         }
+
+        await _hubContext.Clients.All.SendAsync("TaskCreated", task);
+        await _hubContext.Clients.All.SendAsync("Notification", $"Nova tarefa: {task.Title}");
+
         return _mapper.Map<ShowTaskDTO>(task);
     }
 
@@ -68,6 +76,9 @@ public class TaskRepository : ITaskRepository
         {
             throw new KeyNotFoundException($"Task ID {id} not found after updated.");
         }
+
+        await _hubContext.Clients.All.SendAsync("TaskUpdated", updatedTask);
+
         return updatedTask;
     }
 
@@ -81,6 +92,9 @@ public class TaskRepository : ITaskRepository
         }
         _context.Tasks.Remove(task);
         _context.SaveChanges();
+
+        await _hubContext.Clients.All.SendAsync("TaskDeleted", id);
+
         return true;
     }
 

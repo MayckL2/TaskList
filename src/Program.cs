@@ -1,4 +1,5 @@
 using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
@@ -9,6 +10,7 @@ using Serilog;
 using StackExchange.Redis;
 using TaskList.Contexts;
 using TaskList.Data;
+using TaskList.Hubs;
 using TaskList.Middlewares;
 using TaskList.Models;
 using TaskList.Repositories;
@@ -135,6 +137,47 @@ builder
     )
     .SetApplicationName("TaskListAPI");
 
+// 🔥 Adding SignalR
+builder.Services.AddSignalR();
+
+// 🔥 Configure cors for allow connection with clients
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(
+        "AllowAll",
+        policy =>
+        {
+            policy
+                .AllowAnyOrigin()
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+            // .AllowCredentials(); // For autentication
+        }
+    );
+});
+
+// 🔥 Adding authentication JWT for SignalR (optional)
+builder
+    .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                // 🔥 SignalR envia token via query string
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/taskHub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
+        };
+    });
+
 var app = builder.Build();
 
 // 🔥 Middleware for logs requisitions
@@ -195,6 +238,9 @@ if (app.Environment.IsDevelopment())
     }
 }
 
+app.UseRouting();
+app.UseCors("AllowAll");
+
 app.UseHttpsRedirection();
 
 // Adding midlewares
@@ -205,6 +251,7 @@ app.UseMiddleware<JwtMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHub<TaskHub>("/taskHub");
 app.MapControllers();
 app.MapGet("/ping", () => "pong");
 
