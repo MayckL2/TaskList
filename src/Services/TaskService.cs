@@ -1,4 +1,6 @@
 using System;
+using Gridify;
+using Gridify.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using TaskList.DTOs;
 using TaskList.Repositories;
@@ -43,9 +45,9 @@ public class TaskService : ITaskService
     }
 
     // Update task
-    public async Task<ShowTaskDTO> UpdateAsync(int id, UpdateTaskDTO task)
+    public async Task<ShowTaskDTO> UpdateAsync(UpdateTaskDTO task)
     {
-        return await _repository.UpdateAsync(id, task);
+        return await _repository.UpdateAsync(task.Id, task);
     }
 
     // Delete task if id exists and return bool
@@ -72,5 +74,27 @@ public class TaskService : ITaskService
             return null;
 
         return await _repository.ChangeStatusAsync(task, done);
+    }
+
+    // Get filtered tasks with gridify
+    public async Task<Paging<ShowTaskDTO>> GetFilteredTasksAsync(GridifyQuery gridifyQuery)
+    {
+        var query = _repository
+            .GetQueryable()
+            .AsNoTracking()
+            .Select(t => new ShowTaskDTO
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                Done = t.Done,
+                DateCreation = t.DateCreation,
+                DateEdition = t.DateEdition,
+            });
+
+        // Apply Gridify (filter, order, pagination)
+        var result = await query.GridifyAsync(gridifyQuery);
+
+        return result;
     }
 }

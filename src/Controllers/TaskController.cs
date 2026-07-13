@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Gridify;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
@@ -127,11 +128,11 @@ public class TaskController : ControllerBase
     // Update a task by id
     [HttpPut("UpdateTask/{id}")]
     [Authorize]
-    public async Task<IActionResult> UpdateTask(int id, UpdateTaskDTO updatedTask)
+    public async Task<IActionResult> UpdateTask(UpdateTaskDTO updatedTask)
     {
-        var update = await _taskService.UpdateAsync(id, updatedTask);
+        var update = await _taskService.UpdateAsync(updatedTask);
 
-        await _cache.RemoveAsync($"tarefa:{id}");
+        await _cache.RemoveAsync($"tarefa:{updatedTask.Id}");
         _logger.LogInformation("🗑️ Cache da lista invalidado");
 
         return Ok(update);
@@ -171,6 +172,15 @@ public class TaskController : ControllerBase
         {
             return BadRequest("Task not found...");
         }
+        return Ok(result);
+    }
+
+    // Return filtered tasks with gridify
+    [HttpGet("Filter")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetFilteredTasks([FromQuery] GridifyQuery query)
+    {
+        var result = await _taskService.GetFilteredTasksAsync(query);
         return Ok(result);
     }
 }

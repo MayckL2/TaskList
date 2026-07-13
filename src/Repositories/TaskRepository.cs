@@ -1,5 +1,7 @@
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using Gridify;
+using Gridify.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using TaskList.Contexts;
 using TaskList.DTOs;
@@ -29,6 +31,12 @@ public class TaskRepository : ITaskRepository
     public IQueryable<ShowTaskDTO> GetAllAsync()
     {
         return _context.Tasks.ProjectTo<ShowTaskDTO>(_mapper.ConfigurationProvider);
+    }
+
+    // Return all task to use with gridify (queryable)
+    public IQueryable<TaskModel> GetQueryable()
+    {
+        return _context.Tasks.AsQueryable();
     }
 
     // Register task on database and return criation

@@ -9,6 +9,7 @@ using Serilog;
 using StackExchange.Redis;
 using TaskList.Contexts;
 using TaskList.Data;
+using TaskList.GraphQL;
 using TaskList.Middlewares;
 using TaskList.Models;
 using TaskList.Repositories;
@@ -136,6 +137,19 @@ builder
     )
     .SetApplicationName("TaskListAPI");
 
+// 🔥 Adding GraphQL to the server
+builder
+    .Services.AddGraphQLServer()
+    .AddQueryType<TaskQuery>()
+    .AddMutationType<TaskMutation>()
+    .AddSubscriptionType<TaskSubscription>()
+    .AddInMemorySubscriptions();
+
+// .AddSocketSessionInterceptor<CustomSocketInterceptor>(); // 👈 Armazenamento em memória
+// .AddFiltering() // 👈 Suporte a filtros (opcional)
+// .AddSorting() // 👈 Suporte a ordenação (opcional)
+// .AddProjections(); // 👈 Suporte a projeções (opcional)
+
 var app = builder.Build();
 
 // 🔥 Middleware for logs requisitions
@@ -206,6 +220,8 @@ app.UseMiddleware<JwtMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseWebSockets();
+app.MapGraphQL();
 app.MapControllers();
 app.MapGet("/ping", () => "pong");
 
