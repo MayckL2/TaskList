@@ -1,85 +1,49 @@
-version: '3.8'
 
 services:
-  # SQL Server
+  # 🔥 API .NET
+  api:
+    build:
+      context: .
+      dockerfile: src/TaskList.API/Dockerfile
+    container_name: tasklist-api
+    ports:
+      - "8080:80"
+      - "8081:443"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db;Database=TaskListDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
+      - JwtSettings__SecretKey=${JWT_SECRET}
+    networks:
+      - tasklist-network
+    restart: unless-stopped
+
+  # 🔥 SQL Server
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: tasklist-db
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=SenhaTaskList@123
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD}
       - MSSQL_PID=Express
-      - TZ=America/Sao_Paulo
     ports:
       - "1433:1433"
     volumes:
       - sql_data:/var/opt/mssql
+    networks:
+      - tasklist-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "SenhaTaskList@123", "-C", "-Q", "SELECT 1"]
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${DB_PASSWORD}", "-C", "-Q", "SELECT 1"]
       interval: 10s
-      timeout: 5s
+      timeout: 3s
       retries: 10
       start_period: 30s
-    networks:
-      - tasklist-network
-    restart: unless-stopped
-
-  # Redis (para cache)
-  redis:
-    image: redis:alpine
-    container_name: tasklist-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - tasklist-network
-    restart: unless-stopped
-
-  # Seq (para logs)
-  seq:
-    image: datalust/seq:latest
-    container_name: tasklist-seq
-    environment:
-      - ACCEPT_EULA=Y
-    ports:
-      - "5341:5341"
-    networks:
-      - tasklist-network
-    volumes:
-      - seq_data:/data
-    restart: unless-stopped
-
-  # API
-  api:
-    build: .
-    container_name: tasklist-api
-    ports:
-      - "8080:80"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      seq:
-        condition: service_started
-    environment:
-      # 🔥 Sobrescreve as conexões para o Docker
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=db;Database=TaskList;User Id=sa;Password=SenhaTaskList@123;TrustServerCertificate=True;
-      - ConnectionStrings__Redis=redis:6379
-      - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
-      - JwtSettings__SecretKey=SGk2qg1A7joXHOWqJa9n1X2JMyVaJbVXGYhaOluJOZR
-      - JwtSettings__Issuer=TaskList
-      - JwtSettings__Audience=User
-    networks:
-      - tasklist-network
-    restart: unless-stopped
 
 volumes:
   sql_data:
-  redis_data:
-  seq_data:
 
 networks:
   tasklist-network:
