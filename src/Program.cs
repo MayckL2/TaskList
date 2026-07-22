@@ -1,4 +1,4 @@
-using AutoMapper;
+﻿using AutoMapper;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
@@ -7,6 +7,8 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using StackExchange.Redis;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using TaskList.Contexts;
 using TaskList.Data;
 using TaskList.Middlewares;
@@ -16,17 +18,33 @@ using TaskList.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 🔥 FORÇAR A API A ESCUTAR EM 0.0.0.0
+builder.WebHost.UseUrls("http://0.0.0.0:80");
+
+// OU via Kestrel
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(80);
+});
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
+
 // Serilog for logs configuration
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration) // Lê do appsettings.json
+    .ReadFrom.Configuration(builder.Configuration) // LÃª do appsettings.json
     .Enrich.FromLogContext() // Adiciona contexto (ex: CorrelationId)
-    .Enrich.WithMachineName() // Adiciona nome da máquina
+    .Enrich.WithMachineName() // Adiciona nome da mÃ¡quina
     .Enrich.WithThreadId() // Adiciona ID da thread
     .WriteTo.Console() // Log no console
     .WriteTo.Seq(
         serverUrl: "http://localhost:5341", // URL do Seq
-        apiKey: null // Opcional: chave de API para autenticação
-    // controlLevelSwitch: null // Opcional: para mudar nível em tempo real
+        apiKey: null // Opcional: chave de API para autenticaÃ§Ã£o
+    // controlLevelSwitch: null // Opcional: para mudar nÃ­vel em tempo real
     )
     .CreateLogger();
 
@@ -67,20 +85,21 @@ builder
     .AddDefaultTokenProviders();
 
 // CORS - ######## Restrito para origens expecificas #########
-// builder.Services.AddCors(options =>
-// {
-//     options.AddPolicy(
-//         "AllowFrontend",
-//         policy =>
-//         {
-//             policy
-//                 .WithOrigins("http://localhost:3000", "https://seusite.com")
-//                 .AllowAnyHeader()
-//                 .AllowAnyMethod()
-//                 .AllowCredentials();
-//         }
-//     );
-// });
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(
+        "AllowAll",
+        policy =>
+        {
+            policy
+                // .WithOrigins("http://localhost:3000", "https://seusite.com")
+                .AllowAnyOrigin()
+                .AllowAnyHeader()
+                // .AllowCredentials()
+                .AllowAnyMethod();
+        }
+    );
+});
 
 builder.Services.AddControllers();
 
@@ -128,17 +147,29 @@ builder
 
 // Correction for reset password to work
 // Configuring data protection between requisitions(instances) for password reset token to work
+// var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";
+
 builder
     .Services.AddDataProtection()
     .PersistKeysToStackExchangeRedis(
-        ConnectionMultiplexer.Connect("localhost:6379"),
+        ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis") ?? "redis:6379,abortConnect=false"),
         "DataProtection-Keys"
     )
     .SetApplicationName("TaskListAPI");
 
 var app = builder.Build();
 
-// 🔥 Middleware for logs requisitions
+// Migrations to work on container
+if (args.Contains("migrate"))
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<TaskContext>();
+    await dbContext.Database.MigrateAsync();
+    Console.WriteLine("Migrations aplicadas com sucesso!");
+    return;
+}
+
+// ðŸ”¥ Middleware for logs requisitions
 app.UseSerilogRequestLogging(options =>
 {
     options.MessageTemplate =
@@ -177,11 +208,11 @@ if (app.Environment.IsDevelopment())
     try
     {
         mapper.ConfigurationProvider.AssertConfigurationIsValid();
-        Console.WriteLine("✅ Configuração do AutoMapper é válida!");
+        Console.WriteLine("âœ… ConfiguraÃ§Ã£o do AutoMapper Ã© vÃ¡lida!");
     }
     catch (AutoMapperConfigurationException ex)
     {
-        Console.WriteLine($"❌ Erro na configuração do AutoMapper: {ex.Message}");
+        Console.WriteLine($"âŒ Erro na configuraÃ§Ã£o do AutoMapper: {ex.Message}");
         // Log detalhado dos erros
         foreach (var error in ex.Errors)
         {
@@ -190,7 +221,7 @@ if (app.Environment.IsDevelopment())
             );
             foreach (var unmappedProperty in error.UnmappedPropertyNames)
             {
-                Console.WriteLine($"    Propriedade não mapeada: {unmappedProperty}");
+                Console.WriteLine($"    Propriedade nÃ£o mapeada: {unmappedProperty}");
             }
         }
     }
@@ -213,12 +244,12 @@ app.UseSerilogRequestLogging();
 
 try
 {
-    Log.Information("🚀 Aplicação iniciada com sucesso");
+    Log.Information("ðŸš€ AplicaÃ§Ã£o iniciada com sucesso");
     app.Run();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "❌ Falha crítica na inicialização");
+    Log.Fatal(ex, "âŒ Falha crÃ­tica na inicializaÃ§Ã£o");
 }
 finally
 {
@@ -234,7 +265,7 @@ public class ApiHealthCheck : IHealthCheck
     {
         try
         {
-            // Verificações adicionais (memória, disco, etc.)
+            // VerificaÃ§Ãµes adicionais (memÃ³ria, disco, etc.)
             var isHealthy = true;
 
             if (isHealthy)
@@ -250,3 +281,5 @@ public class ApiHealthCheck : IHealthCheck
         }
     }
 }
+
+

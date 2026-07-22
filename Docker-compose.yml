@@ -1,10 +1,9 @@
-
 services:
   # 🔥 API .NET
   api:
     build:
       context: .
-      dockerfile: src/TaskList.API/Dockerfile
+      dockerfile: Dockerfile
     container_name: tasklist-api
     ports:
       - "8080:80"
@@ -12,10 +11,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started  
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=db;Database=TaskListDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false  
       - JwtSettings__SecretKey=${JWT_SECRET}
+      - ASPNETCORE_URLS=http://0.0.0.0:80
     networks:
       - tasklist-network
     restart: unless-stopped
@@ -42,8 +45,26 @@ services:
       retries: 10
       start_period: 30s
 
+  redis:
+    image: redis:alpine
+    container_name: tasklist-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - tasklist-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    command: redis-server --appendonly yes
+
 volumes:
   sql_data:
+  redis_data:
 
 networks:
   tasklist-network:
