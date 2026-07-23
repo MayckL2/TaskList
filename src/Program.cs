@@ -18,7 +18,6 @@ using TaskList.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔥 FORÇAR A API A ESCUTAR EM 0.0.0.0
 builder.WebHost.UseUrls("http://0.0.0.0:80");
 
 // OU via Kestrel
@@ -159,17 +158,7 @@ builder
 
 var app = builder.Build();
 
-// Migrations to work on container
-if (args.Contains("migrate"))
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<TaskContext>();
-    await dbContext.Database.MigrateAsync();
-    Console.WriteLine("Migrations aplicadas com sucesso!");
-    return;
-}
-
-// ðŸ”¥ Middleware for logs requisitions
+// Middleware for logs requisitions
 app.UseSerilogRequestLogging(options =>
 {
     options.MessageTemplate =
@@ -183,6 +172,23 @@ app.UseSerilogRequestLogging(options =>
 
 using (var scope = app.Services.CreateScope())
 {
+     var dbContext = scope.ServiceProvider.GetRequiredService<TaskContext>();
+    
+    try
+    {
+        Console.WriteLine("🔄 Criando banco de dados...");
+        await dbContext.Database.EnsureCreatedAsync();
+        Console.WriteLine("✅ Banco criado com sucesso!");
+        
+        Console.WriteLine("🔄 Aplicando migrações...");
+        await dbContext.Database.MigrateAsync();
+        Console.WriteLine("✅ Migrações aplicadas!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Erro: {ex.Message}");
+    }
+
     var services = scope.ServiceProvider;
     try
     {
@@ -208,11 +214,11 @@ if (app.Environment.IsDevelopment())
     try
     {
         mapper.ConfigurationProvider.AssertConfigurationIsValid();
-        Console.WriteLine("âœ… ConfiguraÃ§Ã£o do AutoMapper Ã© vÃ¡lida!");
+        Console.WriteLine("Configuração do AutoMapper valida!");
     }
     catch (AutoMapperConfigurationException ex)
     {
-        Console.WriteLine($"âŒ Erro na configuraÃ§Ã£o do AutoMapper: {ex.Message}");
+        Console.WriteLine($"Erro na configuração do AutoMapper: {ex.Message}");
         // Log detalhado dos erros
         foreach (var error in ex.Errors)
         {
@@ -221,7 +227,7 @@ if (app.Environment.IsDevelopment())
             );
             foreach (var unmappedProperty in error.UnmappedPropertyNames)
             {
-                Console.WriteLine($"    Propriedade nÃ£o mapeada: {unmappedProperty}");
+                Console.WriteLine($"Propriedade não mapeada: {unmappedProperty}");
             }
         }
     }
@@ -244,12 +250,12 @@ app.UseSerilogRequestLogging();
 
 try
 {
-    Log.Information("ðŸš€ AplicaÃ§Ã£o iniciada com sucesso");
+    Log.Information("Aplicão iniciada com sucesso");
     app.Run();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "âŒ Falha crÃ­tica na inicializaÃ§Ã£o");
+    Log.Fatal(ex, "Falha critica na inicialização");
 }
 finally
 {
@@ -265,7 +271,6 @@ public class ApiHealthCheck : IHealthCheck
     {
         try
         {
-            // VerificaÃ§Ãµes adicionais (memÃ³ria, disco, etc.)
             var isHealthy = true;
 
             if (isHealthy)

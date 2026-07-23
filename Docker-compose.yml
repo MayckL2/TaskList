@@ -19,6 +19,7 @@ services:
       - ConnectionStrings__Redis=redis:6379,abortConnect=false  
       - JwtSettings__SecretKey=${JWT_SECRET}
       - ASPNETCORE_URLS=http://0.0.0.0:80
+      - TZ=America/Sao_Paulo
     networks:
       - tasklist-network
     restart: unless-stopped
@@ -31,10 +32,13 @@ services:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${DB_PASSWORD}
       - MSSQL_PID=Express
+      - TZ=America/Sao_Paulo
     ports:
       - "1433:1433"
     volumes:
       - sql_data:/var/opt/mssql
+      - ./docker/sql/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+    entrypoint: /bin/bash /usr/local/bin/entrypoint.sh
     networks:
       - tasklist-network
     restart: unless-stopped
@@ -61,6 +65,16 @@ services:
       timeout: 3s
       retries: 10
     command: redis-server --appendonly yes
+
+  migrate:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=TaskListDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
+    command: ["dotnet ef database update"]
+    restart: "no"
 
 volumes:
   sql_data:

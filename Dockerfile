@@ -4,10 +4,6 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 # Instalar Entity Framework CLI globalmente
 RUN dotnet tool install -g dotnet-ef
 
-# Copiar script de migração (antes de WORKDIR)
-COPY entrypoint-migrate.sh /entrypoint-migrate.sh
-RUN chmod +x /entrypoint-migrate.sh
-
 WORKDIR /src
 
 # Copiar csproj e restaurar dependências
