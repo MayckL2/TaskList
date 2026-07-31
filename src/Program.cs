@@ -15,16 +15,20 @@ using TaskList.Middlewares;
 using TaskList.Models;
 using TaskList.Repositories;
 using TaskList.Services;
+using Hangfire;
+using Hangfire.SqlServer;
+using Hangfire.Dashboard.BasicAuthorization;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.UseUrls("http://0.0.0.0:80");
+// builder.WebHost.UseUrls("http://0.0.0.0:80");
 
 // OU via Kestrel
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(80);
-});
+// builder.WebHost.ConfigureKestrel(options =>
+// {
+//     options.ListenAnyIP(80);
+// });
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -148,15 +152,58 @@ builder
 // Configuring data protection between requisitions(instances) for password reset token to work
 // var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";
 
-builder
-    .Services.AddDataProtection()
-    .PersistKeysToStackExchangeRedis(
-        ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis") ?? "redis:6379,abortConnect=false"),
-        "DataProtection-Keys"
-    )
-    .SetApplicationName("TaskListAPI");
+// builder
+//     .Services.AddDataProtection()
+//     .PersistKeysToStackExchangeRedis(
+//         ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis") ?? "redis:6379,abortConnect=false"),
+//         "DataProtection-Keys"
+//     )
+//     .SetApplicationName("TaskListAPI");
+
+// 🔥 1. ADICIONAR HANGFIRE
+builder.Services.AddHangfire(configuration => configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        new SqlServerStorageOptions
+        {
+            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+            QueuePollInterval = TimeSpan.Zero,
+            UseRecommendedIsolationLevel = true,
+            DisableGlobalLocks = true
+        }));
+
+// 🔥 2. ADICIONAR O SERVIDOR HANGFIRE (processa os jobs)
+builder.Services.AddHangfireServer();
+
+builder.Services.AddScoped<IHangFire, HangFire>(); 
 
 var app = builder.Build();
+
+// 🔥 3. DASHBOARD (interface de monitoramento)
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[]
+    {
+        new BasicAuthAuthorizationFilter(new BasicAuthAuthorizationFilterOptions
+        {
+            RequireSsl = false,
+            SslRedirect = false,
+            LoginCaseSensitive = true,
+            Users = new[]
+            {
+                new BasicAuthAuthorizationUser
+                {
+                    Login = "admin",
+                    PasswordClear = "Hangfire@123"
+                }
+            }
+        })
+    }
+});
 
 // Middleware for logs requisitions
 app.UseSerilogRequestLogging(options =>
@@ -244,6 +291,23 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// 🔥 4. EXEMPLO DE JOBS (opcional: agendar ao iniciar)
+var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
+
+// 🔥 Job recorrente: limpar logs todo dia às 3h
+recurringJobManager.AddOrUpdate<IHangFire>(
+    "limpar-logs",
+    service => service.LimparLogsAsync(),
+    Cron.Daily(3));
+
+// 🔥 Job recorrente: verificar tarefas atrasadas a cada hora
+recurringJobManager.AddOrUpdate<IHangFire>(
+    "verificar-tarefas-atrasadas",
+    service => service.VerificarTarefasAtrasadasAsync(),
+    Cron.Minutely());
+
+
 app.MapGet("/ping", () => "pong");
 
 app.UseSerilogRequestLogging();

@@ -14,6 +14,7 @@ public class TaskContext : IdentityDbContext<User>
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<UserRole> UserRoles { get; set; }
+    public DbSet<Report> Reports { get; set; }
 
     // specify the id as the primary key in the Model
 
@@ -59,6 +60,14 @@ public class TaskContext : IdentityDbContext<User>
         {
             entity.HasKey(ur => new { ur.UserId, ur.RoleId });
         });
+
+         modelBuilder.Entity<Report>(entity =>
+        {
+            entity.HasNoKey();
+            entity.HasIndex(r => r.Date);
+            entity.HasIndex(r => r.Data);
+        });
+
         // Configuração da tabela UserClaims (customizada)
         // builder.Entity<UserClaim>(entity =>
         // {
