@@ -49,7 +49,7 @@ public class AuthController : ControllerBase
         var ipAddress = GetIpAddress();
         var result = await _authService.LoginAsync(loginDto, ipAddress);
 
-        if (!result.Success)
+        if (!result.Success || result.RefreshToken == null)
         {
             return Unauthorized(result);
         }
@@ -76,7 +76,7 @@ public class AuthController : ControllerBase
             ipAddress
         );
 
-        if (!result.Success)
+        if (!result.Success || result.RefreshToken == null)
         {
             return Unauthorized(result);
         }

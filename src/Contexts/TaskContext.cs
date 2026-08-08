@@ -10,10 +10,10 @@ public class TaskContext : IdentityDbContext<User>
         : base(options) { }
 
     public DbSet<TaskModel> Tasks { get; set; }
-    public DbSet<User> Users { get; set; }
+    public new DbSet<User> Users { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
-    public DbSet<Role> Roles { get; set; }
-    public DbSet<UserRole> UserRoles { get; set; }
+    public new DbSet<Role> Roles { get; set; }
+    public new DbSet<UserRole> UserRoles { get; set; }
     public DbSet<Report> Reports { get; set; }
 
     // specify the id as the primary key in the Model

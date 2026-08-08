@@ -3,7 +3,7 @@ namespace TaskList.Models;
 public class Report
 {
     public DateTime Date { get; set; }
-    public string Data { get; set; }
+    public required string Data { get; set; }
 }
 
 public class DataRepost

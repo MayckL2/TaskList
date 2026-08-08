@@ -77,7 +77,7 @@ public class UsersController : ControllerBase
             query = query.Where(u =>
                 u.UserName!.Contains(search)
                 || u.Email!.Contains(search)
-                || u.FullName.Contains(search)
+                || u.FullName!.Contains(search)
             );
         }
 

@@ -42,6 +42,8 @@ public class RoleRepository : IRoleRepository
             UserId = user.Id,
             RoleId = role.Id,
             AssignedAt = DateTime.UtcNow,
+            User = user,
+            Role = role
         };
 
         await _context.UserRoles.AddAsync(userRole);

@@ -1,4 +1,10 @@
-﻿using AutoMapper;
+﻿using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using AutoMapper;
+using Hangfire;
+using Hangfire.Dashboard.BasicAuthorization;
+using Hangfire.SqlServer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
@@ -7,18 +13,12 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using StackExchange.Redis;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using TaskList.Contexts;
 using TaskList.Data;
 using TaskList.Middlewares;
 using TaskList.Models;
 using TaskList.Repositories;
 using TaskList.Services;
-using Hangfire;
-using Hangfire.SqlServer;
-using Hangfire.Dashboard.BasicAuthorization;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,7 +30,8 @@ var builder = WebApplication.CreateBuilder(args);
 //     options.ListenAnyIP(80);
 // });
 
-builder.Services.AddControllers()
+builder
+    .Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -128,7 +129,22 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // AutoMapper Register
-builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddAutoMapper(
+    cfg =>
+    {
+        cfg.AllowNullDestinationValues = true;
+        cfg.AllowNullCollections = true;
+
+        // Correction for vulnerability of automapper
+        // cfg.ForAllMaps(
+        //     (typeMap, options) =>
+        //     {
+        //         options.MaxDepth(32);
+        //     }
+        // );
+    },
+    typeof(Program)
+);
 
 // TaskRepository scoped
 builder.Services.AddScoped<TaskRepository>();
@@ -136,7 +152,8 @@ builder.Services.AddScoped<TaskRepository>();
 // Taskservice scoped
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
+
+// builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -162,48 +179,51 @@ builder
 
 // 🔥 1. ADICIONAR HANGFIRE
 builder.Services.AddHangfire(configuration => configuration
-    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-    .UseSimpleAssemblyNameTypeSerializer()
-    .UseRecommendedSerializerSettings()
-    .UseSqlServerStorage(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        new SqlServerStorageOptions
-        {
-            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
-            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-            QueuePollInterval = TimeSpan.Zero,
-            UseRecommendedIsolationLevel = true,
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UseSqlServerStorage(
+            builder.Configuration.GetConnectionString("DefaultConnection"),
+            new SqlServerStorageOptions
+            {
+                CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                QueuePollInterval = TimeSpan.Zero,
+                UseRecommendedIsolationLevel = true,
             DisableGlobalLocks = true
         }));
 
 // 🔥 2. ADICIONAR O SERVIDOR HANGFIRE (processa os jobs)
 builder.Services.AddHangfireServer();
 
-builder.Services.AddScoped<IHangFire, HangFire>(); 
+builder.Services.AddScoped<IHangFire, HangFire>();
 
 var app = builder.Build();
 
 // 🔥 3. DASHBOARD (interface de monitoramento)
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
-{
-    Authorization = new[]
     {
-        new BasicAuthAuthorizationFilter(new BasicAuthAuthorizationFilterOptions
+        Authorization = new[]
         {
-            RequireSsl = false,
-            SslRedirect = false,
-            LoginCaseSensitive = true,
-            Users = new[]
-            {
-                new BasicAuthAuthorizationUser
+            new BasicAuthAuthorizationFilter(
+                new BasicAuthAuthorizationFilterOptions
                 {
-                    Login = "admin",
-                    PasswordClear = "Hangfire@123"
+                    RequireSsl = false,
+                    SslRedirect = false,
+                    LoginCaseSensitive = true,
+                    Users = new[]
+                    {
+                        new BasicAuthAuthorizationUser
+                        {
+                            Login = "admin",
+                            PasswordClear = "Hangfire@123",
+                        },
+                    },
                 }
-            }
-        })
+            ),
+        },
     }
-});
+);
 
 // Middleware for logs requisitions
 app.UseSerilogRequestLogging(options =>
@@ -219,14 +239,14 @@ app.UseSerilogRequestLogging(options =>
 
 using (var scope = app.Services.CreateScope())
 {
-     var dbContext = scope.ServiceProvider.GetRequiredService<TaskContext>();
-    
+    var dbContext = scope.ServiceProvider.GetRequiredService<TaskContext>();
+
     try
     {
         Console.WriteLine("🔄 Criando banco de dados...");
         await dbContext.Database.EnsureCreatedAsync();
         Console.WriteLine("✅ Banco criado com sucesso!");
-        
+
         Console.WriteLine("🔄 Aplicando migrações...");
         await dbContext.Database.MigrateAsync();
         Console.WriteLine("✅ Migrações aplicadas!");
@@ -299,14 +319,15 @@ var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>(
 recurringJobManager.AddOrUpdate<IHangFire>(
     "limpar-logs",
     service => service.LimparLogsAsync(),
-    Cron.Daily(3));
+    Cron.Daily(3)
+);
 
 // 🔥 Job recorrente: verificar tarefas atrasadas a cada hora
 recurringJobManager.AddOrUpdate<IHangFire>(
     "verificar-tarefas-atrasadas",
     service => service.VerificarTarefasAtrasadasAsync(),
-    Cron.Minutely());
-
+    Cron.Minutely()
+);
 
 app.MapGet("/ping", () => "pong");
 
@@ -350,5 +371,3 @@ public class ApiHealthCheck : IHealthCheck
         }
     }
 }
-
-

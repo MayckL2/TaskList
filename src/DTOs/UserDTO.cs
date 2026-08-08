@@ -2,7 +2,7 @@ namespace TaskList.DTOs;
 
 public class AuthUser
 {
-    public string Id { get; set; }
+    public required string Id { get; set; }
     public string? FullName { get; set; }
     public string? PasswordHash { get; set; }
     public string? Email { get; set; }

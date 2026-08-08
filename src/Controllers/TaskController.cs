@@ -79,6 +79,7 @@ public class TaskController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro não tratado");
             // Only return the database
             var tarefas = await _taskService.GetAllAsync();
             return Ok(tarefas);
