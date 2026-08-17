@@ -1,22 +1,31 @@
-# Usa uma imagem base do SDK do .NET para compilar o projeto
+# Estágio 1: Build da aplicação
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
-# Caso não existe pasta src, apontar para /app ou qualquer nome personalizado:
-# WORkDIR /app
 
-# Copia o arquivo de projeto e restaura as dependências
-COPY ["src/TaskList.csproj", "."]
+# Instalar Entity Framework CLI globalmente
+RUN dotnet tool install -g dotnet-ef
+
+WORKDIR /src
+
+# Copiar csproj e restaurar dependências
+COPY src/TaskList.csproj .
 RUN dotnet restore
 
-# Copia o resto do código e publica a aplicação
-COPY . .
+# Copiar todo o código e publicar
+COPY src .
 RUN dotnet publish -c Release -o /app/publish
 
-# Cria a imagem final, mais leve, para rodar a aplicação
+# Estágio 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copiar os arquivos publicados
 COPY --from=build /app/publish .
 
-# Diz ao container qual porta será exposta e qual comando executar ao iniciar
+# Expor portas
 EXPOSE 80
+EXPOSE 443
+
+# Entrypoint que inicia a API
 ENTRYPOINT ["dotnet", "TaskList.dll"]
