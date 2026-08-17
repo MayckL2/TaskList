@@ -15,6 +15,7 @@ using Serilog;
 using StackExchange.Redis;
 using TaskList.Contexts;
 using TaskList.Data;
+using TaskList.GraphQL;
 using TaskList.Middlewares;
 using TaskList.Models;
 using TaskList.Repositories;
@@ -198,6 +199,19 @@ builder.Services.AddHangfireServer();
 
 builder.Services.AddScoped<IHangFire, HangFire>();
 
+// 🔥 Adding GraphQL to the server
+builder
+    .Services.AddGraphQLServer()
+    .AddQueryType<TaskQuery>()
+    .AddMutationType<TaskMutation>()
+    .AddSubscriptionType<TaskSubscription>()
+    .AddInMemorySubscriptions();
+
+// .AddSocketSessionInterceptor<CustomSocketInterceptor>(); // 👈 Armazenamento em memória
+// .AddFiltering() // 👈 Suporte a filtros (opcional)
+// .AddSorting() // 👈 Suporte a ordenação (opcional)
+// .AddProjections(); // 👈 Suporte a projeções (opcional)
+
 var app = builder.Build();
 
 // 🔥 3. DASHBOARD (interface de monitoramento)
@@ -310,6 +324,8 @@ app.UseMiddleware<JwtMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseWebSockets();
+app.MapGraphQL();
 app.MapControllers();
 
 // 🔥 4. EXEMPLO DE JOBS (opcional: agendar ao iniciar)

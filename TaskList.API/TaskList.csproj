@@ -12,6 +12,12 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="16.1.1" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
+    <PackageReference Include="Gridify" Version="2.19.1" />
+    <PackageReference Include="Gridify.EntityFramework" Version="2.19.1" />
+    <PackageReference Include="HotChocolate.AspNetCore" Version="13.9.7" />
+    <PackageReference Include="HotChocolate.AspNetCore.Subscriptions" Version="10.5.5" />
+    <PackageReference Include="HotChocolate.Execution" Version="13.9.7" />
+    <PackageReference Include="HotChocolate.Execution.Abstractions" Version="13.9.7" />
     <PackageReference Include="Hangfire" Version="1.8.24" />
     <PackageReference Include="Hangfire.Dashboard.BasicAuthorization" Version="1.0.2" />
     <PackageReference Include="Hangfire.SqlServer" Version="1.8.24" />
