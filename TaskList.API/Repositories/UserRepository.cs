@@ -41,7 +41,7 @@ public class UserRepository : IUserRepository
         var token = await _context
             .Set<RefreshToken>()
             .Include(rt => rt.User)
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken && rt.IsActive);
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
 
         return token?.User;
     }

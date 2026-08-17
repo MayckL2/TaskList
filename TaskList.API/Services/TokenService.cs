@@ -94,7 +94,7 @@ public class TokenService : ITokenService
             return null;
 
         var token = user.RefreshTokens?.FirstOrDefault(rt =>
-            rt.Token == refreshToken && rt.IsActive
+            rt.Token == refreshToken
         );
 
         // Rotation detection: if token was revoked, revoke all user tokens (possible theft)
