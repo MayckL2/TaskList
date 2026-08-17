@@ -202,6 +202,22 @@ namespace TaskList.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("TaskList.Models.Report", b =>
+                {
+                    b.Property<string>("Data")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.HasIndex("Data");
+
+                    b.HasIndex("Date");
+
+                    b.ToTable("Reports");
+                });
+
             modelBuilder.Entity("TaskList.Models.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -472,7 +488,7 @@ namespace TaskList.Migrations
             modelBuilder.Entity("TaskList.Models.UserRole", b =>
                 {
                     b.HasOne("TaskList.Models.Role", "Role")
-                        .WithMany("UserRoles")
+                        .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -486,11 +502,6 @@ namespace TaskList.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TaskList.Models.Role", b =>
-                {
-                    b.Navigation("UserRoles");
                 });
 
             modelBuilder.Entity("TaskList.Models.User", b =>

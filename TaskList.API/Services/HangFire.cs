@@ -9,9 +9,9 @@ public class HangFire : IHangFire
 {
     private readonly TaskContext _context;
     private readonly ILogger<HangFire> _logger;
-    private readonly IEmailService _emailService;
+    private readonly IEmailService? _emailService;
 
-    public HangFire(TaskContext context, ILogger<HangFire> logger, IEmailService emailService)
+    public HangFire(TaskContext context, ILogger<HangFire> logger, IEmailService? emailService = null)
     {
         _context = context;
         _logger = logger;

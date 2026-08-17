@@ -6,6 +6,7 @@
     <UserSecretsId>c4c3f0a5-5e81-419b-8298-c229ff65572d</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
+    <AssemblyName>TaskList.API</AssemblyName>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
