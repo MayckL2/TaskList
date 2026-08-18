@@ -1,0 +1,85 @@
+services:
+  # 🔥 API .NET
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tasklist-api
+    ports:
+      - "8080:80"
+      - "8081:443"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started  
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db;Database=TaskListDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false  
+      - JwtSettings__SecretKey=${JWT_SECRET}
+      - ASPNETCORE_URLS=http://0.0.0.0:80
+      - TZ=America/Sao_Paulo
+    networks:
+      - tasklist-network
+    restart: unless-stopped
+
+  # 🔥 SQL Server
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: tasklist-db
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD}
+      - MSSQL_PID=Express
+      - TZ=America/Sao_Paulo
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+      - ./docker/sql/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+    entrypoint: /bin/bash /usr/local/bin/entrypoint.sh
+    networks:
+      - tasklist-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${DB_PASSWORD}", "-C", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:alpine
+    container_name: tasklist-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - tasklist-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    command: redis-server --appendonly yes
+
+  migrate:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=TaskListDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
+    command: ["dotnet ef database update"]
+    restart: "no"
+
+volumes:
+  sql_data:
+  redis_data:
+
+networks:
+  tasklist-network:
+    driver: bridge
