@@ -20,16 +20,72 @@ using TaskList.Middlewares;
 using TaskList.Models;
 using TaskList.Repositories;
 using TaskList.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// builder.WebHost.UseUrls("http://0.0.0.0:80");
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 
-// OU via Kestrel
-// builder.WebHost.ConfigureKestrel(options =>
-// {
-//     options.ListenAnyIP(80);
-// });
+builder.Services.AddAuthentication(options =>
+{
+    // 🔥 FORÇAR O JWT COMO ESQUEMA PADRÃO
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey não configurada no appsettings.json"))),
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidateAudience = true,
+            ValidAudience = jwtSettings["Audience"],
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero // 🔥 IMPORTANTE para Docker
+        };
+        
+        // 🔥 EVENTOS PARA DEBUG
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine($"❌ Falha na autenticação: {context.Exception.Message}");
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                var principal = context.Principal;
+    
+                Console.WriteLine("📋 Claims do token:");
+                if (principal?.Claims != null)
+                {
+                    foreach (var claim in principal.Claims)
+                    {
+                        Console.WriteLine($"   {claim.Type}: {claim.Value}");
+                    }
+                    return Task.CompletedTask;
+                }
+                else
+                {
+                    Console.WriteLine("Claims não localizadas...");
+                    return Task.CompletedTask;
+                }
+                
+                // Console.WriteLine($"✅ Token validado: {context.Principal?.Identity?.Name}");
+            },
+            OnChallenge = context =>
+            {
+                Console.WriteLine($"⚠️ Challenge: {context.Error}, {context.ErrorDescription}");
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 builder
     .Services.AddControllers()
@@ -69,7 +125,7 @@ builder.Services.AddDbContext<TaskContext>(options =>
 
 // Identity
 builder
-    .Services.AddIdentity<User, IdentityRole>(options =>
+    .Services.AddIdentityCore<User>(options =>
     {
         // Password settings
         options.Password.RequireDigit = true;
@@ -86,8 +142,11 @@ builder
         // User settings
         options.User.RequireUniqueEmail = true;
     })
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<TaskContext>()
     .AddDefaultTokenProviders();
+
+builder.Services.AddScoped<RoleManager<IdentityRole>>();
 
 // CORS - ######## Restrito para origens expecificas #########
 builder.Services.AddCors(options =>
@@ -97,10 +156,16 @@ builder.Services.AddCors(options =>
         policy =>
         {
             policy
-                // .WithOrigins("http://localhost:3000", "https://seusite.com")
-                .AllowAnyOrigin()
+                .WithOrigins(
+                    "http://localhost:8080",    // Swagger Docker
+                    "http://localhost:5000",    // Swagger local
+                    "http://localhost:5001",    // Swagger local HTTPS
+                    "http://localhost:4200",    // Angular
+                    "http://localhost:3000"     // React
+                )
+                // .AllowAnyOrigin()
                 .AllowAnyHeader()
-                // .AllowCredentials()
+                .AllowCredentials()
                 .AllowAnyMethod();
         }
     );
@@ -135,14 +200,6 @@ builder.Services.AddAutoMapper(
     {
         cfg.AllowNullDestinationValues = true;
         cfg.AllowNullCollections = true;
-
-        // Correction for vulnerability of automapper
-        // cfg.ForAllMaps(
-        //     (typeMap, options) =>
-        //     {
-        //         options.MaxDepth(32);
-        //     }
-        // );
     },
     typeof(Program)
 );
@@ -165,18 +222,6 @@ builder
     .Services.AddHealthChecks()
     .AddDbContextCheck<TaskContext>("database")
     .AddCheck<IHealthCheck>("api");
-
-// Correction for reset password to work
-// Configuring data protection between requisitions(instances) for password reset token to work
-// var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";
-
-// builder
-//     .Services.AddDataProtection()
-//     .PersistKeysToStackExchangeRedis(
-//         ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis") ?? "redis:6379,abortConnect=false"),
-//         "DataProtection-Keys"
-//     )
-//     .SetApplicationName("TaskListAPI");
 
 // 🔥 1. ADICIONAR HANGFIRE
 builder.Services.AddHangfire(configuration => configuration
@@ -314,12 +359,12 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-app.UseHttpsRedirection();
-
-// Adding midlewares
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
-app.UseMiddleware<JwtMiddleware>();
+
+// app.UseHttpsRedirection();
+
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();

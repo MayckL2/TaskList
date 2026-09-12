@@ -14,10 +14,13 @@ services:
       redis:
         condition: service_started  
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Server=db;Database=TaskListDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True;
       - ConnectionStrings__Redis=redis:6379,abortConnect=false  
       - JwtSettings__SecretKey=${JWT_SECRET}
+      - JwtSettings__Issuer=TaskList
+      - JwtSettings__Audience=User
+      - JwtSettings__AccessTokenExpirationMinutes=1440
       - ASPNETCORE_URLS=http://0.0.0.0:80
       - TZ=America/Sao_Paulo
     networks:

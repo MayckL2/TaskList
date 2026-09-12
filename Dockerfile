@@ -4,14 +4,14 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 # Instalar Entity Framework CLI globalmente
 RUN dotnet tool install -g dotnet-ef
 
-WORKDIR /src
+WORKDIR /TaskList.API
 
 # Copiar csproj e restaurar dependências
-COPY src/TaskList.csproj .
+COPY TaskList.API/TaskList.csproj .
 RUN dotnet restore
 
 # Copiar todo o código e publicar
-COPY src .
+COPY TaskList.API .
 RUN dotnet publish -c Release -o /app/publish
 
 # Estágio 2: Runtime
@@ -28,4 +28,4 @@ EXPOSE 80
 EXPOSE 443
 
 # Entrypoint que inicia a API
-ENTRYPOINT ["dotnet", "TaskList.dll"]
+ENTRYPOINT ["dotnet", "TaskList.API.dll"]

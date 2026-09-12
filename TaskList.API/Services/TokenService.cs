@@ -36,6 +36,9 @@ public class TokenService : ITokenService
 
     public string GenerateAccessToken(User user, IList<string> roles)
     {
+        Console.WriteLine($"🔑 Issuer: {_jwtSettings.Issuer}");
+        Console.WriteLine($"🔑 Audience: {_jwtSettings.Audience}");
+
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id),
