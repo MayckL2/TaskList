@@ -63,7 +63,7 @@ public class TaskRepository : ITaskRepository
         var existingTask = _context.Tasks.Find(id);
         if (existingTask == null)
         {
-            throw new KeyNotFoundException($"Task ID {id} not found.");
+            throw new GreenDonut.KeyNotFoundException($"Task ID {id} not found.");
         }
 
         existingTask.Title = task.Title;
@@ -74,7 +74,7 @@ public class TaskRepository : ITaskRepository
         var updatedTask = await this.GetByIdAsync(id);
         if (updatedTask == null)
         {
-            throw new KeyNotFoundException($"Task ID {id} not found after updated.");
+            throw new GreenDonut.KeyNotFoundException($"Task ID {id} not found after updated.");
         }
         return updatedTask;
     }
@@ -93,12 +93,12 @@ public class TaskRepository : ITaskRepository
     }
 
     // Uptade status done of the task
-    public async Task<ShowTaskDTO> ChangeStatusAsync(ShowTaskDTO task, bool done)
+    public async Task<ShowTaskDTO?> ChangeStatusAsync(ShowTaskDTO task, bool done)
     {
         var existingTask = _context.Tasks.Find(task.Id);
         if (existingTask == null)
         {
-            throw new KeyNotFoundException($"Task ID {task.Id} not found.");
+            throw new GreenDonut.KeyNotFoundException($"Task ID {task.Id} not found.");
         }
 
         existingTask.Done = done;
@@ -108,7 +108,7 @@ public class TaskRepository : ITaskRepository
         var updatedTask = await this.GetByIdAsync(task.Id);
         if (updatedTask == null)
         {
-            throw new KeyNotFoundException($"Task ID {task.Id} not found after updated.");
+            throw new GreenDonut.KeyNotFoundException($"Task ID {task.Id} not found after updated.");
         }
 
         _context.SaveChanges();
