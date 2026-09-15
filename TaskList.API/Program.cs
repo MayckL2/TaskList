@@ -1,16 +1,21 @@
-﻿using System.Text;
+﻿using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AutoMapper;
 using Hangfire;
 using Hangfire.Dashboard.BasicAuthorization;
 using Hangfire.SqlServer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.OpenApi.Models;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 using Serilog;
 using StackExchange.Redis;
 using TaskList.Contexts;
@@ -20,37 +25,41 @@ using TaskList.Middlewares;
 using TaskList.Models;
 using TaskList.Repositories;
 using TaskList.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
+using TaskList.API;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 
-builder.Services.AddAuthentication(options =>
-{
-    // 🔥 FORÇAR O JWT COMO ESQUEMA PADRÃO
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-})
+builder
+    .Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey não configurada no appsettings.json"))),
+                Encoding.UTF8.GetBytes(
+                    jwtSettings["SecretKey"]
+                        ?? throw new InvalidOperationException(
+                            "JWT SecretKey não configurada no appsettings.json"
+                        )
+                )
+            ),
             ValidateIssuer = true,
             ValidIssuer = jwtSettings["Issuer"],
             ValidateAudience = true,
             ValidAudience = jwtSettings["Audience"],
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero // 🔥 IMPORTANTE para Docker
+            ClockSkew = TimeSpan.Zero, // Important for docker
         };
-        
-        // 🔥 EVENTOS PARA DEBUG
+
+        // For debug
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
@@ -61,7 +70,7 @@ builder.Services.AddAuthentication(options =>
             OnTokenValidated = context =>
             {
                 var principal = context.Principal;
-    
+
                 Console.WriteLine("📋 Claims do token:");
                 if (principal?.Claims != null)
                 {
@@ -76,14 +85,12 @@ builder.Services.AddAuthentication(options =>
                     Console.WriteLine("Claims não localizadas...");
                     return Task.CompletedTask;
                 }
-                
-                // Console.WriteLine($"✅ Token validado: {context.Principal?.Identity?.Name}");
             },
             OnChallenge = context =>
             {
                 Console.WriteLine($"⚠️ Challenge: {context.Error}, {context.ErrorDescription}");
                 return Task.CompletedTask;
-            }
+            },
         };
     });
 
@@ -97,18 +104,15 @@ builder
 
 // Serilog for logs configuration
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration) // LÃª do appsettings.json
-    .Enrich.FromLogContext() // Adiciona contexto (ex: CorrelationId)
-    .Enrich.WithMachineName() // Adiciona nome da mÃ¡quina
-    .Enrich.WithThreadId() // Adiciona ID da thread
-    .WriteTo.Console() // Log no console
-    .WriteTo.Seq(
-        serverUrl: "http://localhost:5341", // URL do Seq
-        apiKey: null // Opcional: chave de API para autenticaÃ§Ã£o
-    // controlLevelSwitch: null // Opcional: para mudar nÃ­vel em tempo real
-    )
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext() // Adding context (ex: CorrelationId)
+    .Enrich.WithMachineName()
+    .Enrich.WithThreadId()
+    .WriteTo.Console() // Log for console
+    .WriteTo.Seq(serverUrl: "http://localhost:5341", apiKey: null) // Login/Password: admin
     .CreateLogger();
 
+builder.Logging.ClearProviders();
 builder.Host.UseSerilog();
 
 // Add redis chache
@@ -148,7 +152,7 @@ builder
 
 builder.Services.AddScoped<RoleManager<IdentityRole>>();
 
-// CORS - ######## Restrito para origens expecificas #########
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
@@ -157,13 +161,12 @@ builder.Services.AddCors(options =>
         {
             policy
                 .WithOrigins(
-                    "http://localhost:8080",    // Swagger Docker
-                    "http://localhost:5000",    // Swagger local
-                    "http://localhost:5001",    // Swagger local HTTPS
-                    "http://localhost:4200",    // Angular
-                    "http://localhost:3000"     // React
+                    "http://localhost:8080", // Swagger Docker
+                    "http://localhost:5000", // Swagger local
+                    "http://localhost:5001", // Swagger local HTTPS
+                    "http://localhost:4200", // Angular
+                    "http://localhost:3000" // React
                 )
-                // .AllowAnyOrigin()
                 .AllowAnyHeader()
                 .AllowCredentials()
                 .AllowAnyMethod();
@@ -173,25 +176,11 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "TaskList API", Version = "v1" });
 
-    c.AddSecurityDefinition(
-        "Bearer",
-        new OpenApiSecurityScheme
-        {
-            Name = "Authorization",
-            Type = SecuritySchemeType.Http,
-            Scheme = "Bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description =
-                "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token",
-        }
-    );
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
 });
 
 // AutoMapper Register
@@ -204,14 +193,9 @@ builder.Services.AddAutoMapper(
     typeof(Program)
 );
 
-// TaskRepository scoped
-builder.Services.AddScoped<TaskRepository>();
-
-// Taskservice scoped
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-
-// builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -223,8 +207,9 @@ builder
     .AddDbContextCheck<TaskContext>("database")
     .AddCheck<IHealthCheck>("api");
 
-// 🔥 1. ADICIONAR HANGFIRE
-builder.Services.AddHangfire(configuration => configuration
+// HANGFIRE
+builder.Services.AddHangfire(configuration =>
+    configuration
         .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
         .UseSimpleAssemblyNameTypeSerializer()
         .UseRecommendedSerializerSettings()
@@ -236,15 +221,17 @@ builder.Services.AddHangfire(configuration => configuration
                 SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
                 QueuePollInterval = TimeSpan.Zero,
                 UseRecommendedIsolationLevel = true,
-            DisableGlobalLocks = true
-        }));
+                DisableGlobalLocks = true,
+            }
+        )
+);
 
-// 🔥 2. ADICIONAR O SERVIDOR HANGFIRE (processa os jobs)
+// HANGFIRE (processing jobs)
 builder.Services.AddHangfireServer();
 
 builder.Services.AddScoped<IHangFire, HangFire>();
 
-// 🔥 Adding GraphQL to the server
+// GraphQL
 builder
     .Services.AddGraphQLServer()
     .AddQueryType<TaskQuery>()
@@ -252,15 +239,12 @@ builder
     .AddSubscriptionType<TaskSubscription>()
     .AddInMemorySubscriptions();
 
-// .AddSocketSessionInterceptor<CustomSocketInterceptor>(); // 👈 Armazenamento em memória
-// .AddFiltering() // 👈 Suporte a filtros (opcional)
-// .AddSorting() // 👈 Suporte a ordenação (opcional)
-// .AddProjections(); // 👈 Suporte a projeções (opcional)
-
 var app = builder.Build();
 
-// 🔥 3. DASHBOARD (interface de monitoramento)
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+// DASHBOARD (monitoring interface)
+app.UseHangfireDashboard(
+    "/hangfire",
+    new DashboardOptions
     {
         Authorization = new[]
         {
@@ -330,13 +314,21 @@ using (var scope = app.Services.CreateScope())
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
+
+    app.MapScalarApiReference(options =>
+    {
+        options
+            .WithTitle("TaskList .NET 10")
+            .WithTheme(ScalarTheme.DeepSpace) // Escolha seu tema visual
+            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
+            .AddPreferredSecuritySchemes("BearerAuth");
+    });
 
     using var scope = app.Services.CreateScope();
     var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
 
-    // Validar todos os mapeamentos
+    // Validate all mapping
     try
     {
         mapper.ConfigurationProvider.AssertConfigurationIsValid();
@@ -345,7 +337,6 @@ if (app.Environment.IsDevelopment())
     catch (AutoMapperConfigurationException ex)
     {
         Console.WriteLine($"Erro na configuração do AutoMapper: {ex.Message}");
-        // Log detalhado dos erros
         foreach (var error in ex.Errors)
         {
             Console.WriteLine(
@@ -362,8 +353,6 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// app.UseHttpsRedirection();
-
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
@@ -373,17 +362,17 @@ app.UseWebSockets();
 app.MapGraphQL();
 app.MapControllers();
 
-// 🔥 4. EXEMPLO DE JOBS (opcional: agendar ao iniciar)
+// JOBS (opcional: agendar ao iniciar)
 var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
 
-// 🔥 Job recorrente: limpar logs todo dia às 3h
+// Recurring task: clean logs every day at 3.
 recurringJobManager.AddOrUpdate<IHangFire>(
     "limpar-logs",
     service => service.LimparLogsAsync(),
     Cron.Daily(3)
 );
 
-// 🔥 Job recorrente: verificar tarefas atrasadas a cada hora
+// Recurring task: checking overdue tasks every hour
 recurringJobManager.AddOrUpdate<IHangFire>(
     "verificar-tarefas-atrasadas",
     service => service.VerificarTarefasAtrasadasAsync(),
