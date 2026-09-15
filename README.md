@@ -1,6 +1,6 @@
-![Capa da TaskList API](https://i.imgur.com/sua-imagem-aqui.png)
-
 # 🚀 TaskList API
+
+![Capa da TaskList API](https://i.imgur.com/JLpeWyF.png)
 
 > API RESTful completa para gerenciamento de tarefas, construída com **.NET 10**, autenticação JWT, cache distribuído, monitoramento e muito mais.
 
@@ -29,7 +29,7 @@ A **TaskList API** é uma solução completa para gerenciamento de tarefas, dese
 - 📝 **Logs Estruturados** com Serilog + Seq
 - 🐳 **Containerização** com Docker e Docker Compose
 - 📚 **Documentação Interativa** com Scalar (OpenAPI 3.1)
-- 🧪 **Testes Unitários e de Integração** (xUnit, NSubstitute, Bogus, Playwright)
+- 🧪 **Testes Unitários e de Integração** (xUnit, NSubstitute, Bogus)
 
 ---
 
