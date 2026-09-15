@@ -18,7 +18,7 @@ public class CrudTask
     
     [Fact]
     [Trait("Approach", "Basic")]
-    public void CreateTaskDTO_With_Valid_Data()
+    public void CreateTaskDTO_WithValidData()
     {
         // Arrange
         var title = _faker.Lorem.Sentence(3);
@@ -39,7 +39,7 @@ public class CrudTask
 
     [Fact]
     [Trait("Approach", "FluentAssetion")]
-    public void FluentAssertions_CreateTaskDTO_With_Valid_Data()
+    public void FluentAssertions_CreateTaskDTO_WithValidData()
     {
         // Arrange
         var title = _faker.Lorem.Sentence(3);
@@ -61,7 +61,7 @@ public class CrudTask
     [InlineData("title", "description")]
     [InlineData("wash the dishes", "wash the dishe with a spoon")]
     [Trait("Approach", "InlineData")]
-    public void FluentAssertions_CreateTaskDTO_With_Valid_Data_With_Theory(string title, string description)
+    public void FluentAssertions_CreateTaskDTOWithValidData_WithTheory(string title, string description)
     {
         // Arrange
 
