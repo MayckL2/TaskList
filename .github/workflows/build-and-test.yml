@@ -101,9 +101,8 @@ jobs:
           context: .
           file: ./src/TaskList.API/Dockerfile
           push: false            # 🔥 Mude para true se for publicar
-          tags: |
-            ${{ steps.meta.outputs.tags }}
-            ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }} 
           cache-from: type=gha
           cache-to: type=gha,mode=max
         
