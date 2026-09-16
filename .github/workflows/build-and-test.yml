@@ -102,8 +102,8 @@ jobs:
           file: ./src/TaskList.API/Dockerfile
           push: false            # 🔥 Mude para true se for publicar
           tags: |
-            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
-            ${{ env.DOCKER_IMAGE }}:latest
+            ${{ steps.meta.outputs.tags }}
+            ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
         
