@@ -1,6 +1,6 @@
 # 🚀 TaskList API
 
-[![Build and Test](https://github.comayckl2io/tasklipi/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/seu-usuario/tasklist-api/actions/workflows/build-and-test.yml)
+[![Build and Test](https://github.com/mayckl2/tasklist/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mayckl2/tasklist/actions/workflows/build-and-test.yml)
 
 ![Capa da TaskList API](https://i.imgur.com/JLpeWyF.png)
 
