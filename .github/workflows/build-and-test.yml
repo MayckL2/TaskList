@@ -99,7 +99,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: ./src/TaskList.API/Dockerfile
+          file: ./Dockerfile
           push: false            # 🔥 Mude para true se for publicar
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }} 
