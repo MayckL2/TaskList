@@ -1,6 +1,8 @@
-![Capa da TaskList API](https://i.imgur.com/sua-imagem-aqui.png)
-
 # 🚀 TaskList API
+
+[![Build and Test](https://github.comayckl2io/tasklipi/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/seu-usuario/tasklist-api/actions/workflows/build-and-test.yml)
+
+![Capa da TaskList API](https://i.imgur.com/JLpeWyF.png)
 
 > API RESTful completa para gerenciamento de tarefas, construída com **.NET 10**, autenticação JWT, cache distribuído, monitoramento e muito mais.
 
